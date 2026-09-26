@@ -1,45 +1,73 @@
-from flask import Flask, request, jsonify
 import os
+from flask import Flask, request, jsonify, render_template_string
 from openai import OpenAI
 
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return """
-    <html><head><meta name='viewport' content='width=device-width,initial-scale=1'>
-    <style>
-    body{font-family:sans-serif;background:#111;color:#fff;text-align:center;padding:20px}
-    #chat{background:#222;padding:15px;border-radius:15px;max-width:500px;margin:auto;height:400px;overflow-y:auto;text-align:left}
-    .user{background:#00ff88;color:#000;padding:10px;border-radius:10px;margin:5px;text-align:right}
-    .bot{background:#333;padding:10px;border-radius:10px;margin:5px}
-    </style></head>
-    <body>
-    <h2>IA-FINAL con cerebro real</h2>
-    <div id='chat'><div class='bot'>Hola! Ya tengo cerebro. Pregúntame algo.</div></div>
-    <br><input id='q' style='padding:12px;width:60%;border-radius:10px;border:none' placeholder='Escribe...'>
-    <button style='padding:12px;border-radius:10px;background:#00ff88;border:none;font-weight:bold' onclick='enviar()'>Enviar</button>
-    <script>
-    function enviar(){
-      let q=document.getElementById('q').value;
-      if(!q) return;
-      let c=document.getElementById('chat');
-      c.innerHTML+="<div class='user'>"+q+"</div>";
-      document.getElementById('q').value='';
-      fetch('/cerebro?q='+encodeURIComponent(q)).then(r=>r.json()).then(d=>{
-        c.innerHTML+="<div class='bot'>"+d.respuesta+"</div>";
-        c.scrollTop=c.scrollHeight;
-      });
-    }
-    </script>
-    </body></html>
-    """
+# Cliente de OpenAI
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-@app.route('/cerebro')
-def cerebro():
-    pregunta = request.args.get('q','Hola')
+HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+<title>IA Final</title>
+<style>
+body{font-family:Arial;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;padding:20px}
+#chat{width:90%;max-width:600px;height:400px;background:#222;overflow-y:auto;padding:10px;border-radius:10px}
+.msg{margin:8px 0;padding:8px 12px;border-radius:8px}
+.user{background:#0b93f6;align-self:flex-end}
+.bot{background:#333}
+#inputArea{margin-top:15px;display:flex;width:90%;max-width:600px}
+input{flex:1;padding:10px;border-radius:8px;border:none}
+button{margin-left:8px;padding:10px 15px;border:none;border-radius:8px;background:#0b93f6;color:white}
+</style>
+</head>
+<body>
+<h2>IA Final - Chat con cerebro</h2>
+<div id="chat"></div>
+<div id="inputArea">
+<input id="txt" placeholder="Escribe algo...">
+<button onclick="send()">Enviar</button>
+</div>
+<script>
+async function send(){
+ let t=document.getElementById('txt').value;
+ if(!t) return;
+ let chat=document.getElementById('chat');
+ chat.innerHTML+=`<div class='msg user'>${t}</div>`;
+ document.getElementById('txt').value='';
+ let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t})});
+ let d=await r.json();
+ chat.innerHTML+=`<div class='msg bot'>${d.reply}</div>`;
+ chat.scrollTop=chat.scrollHeight;
+}
+</script>
+</body>
+</html>
+"""
+
+@app.route("/")
+def home():
+    return render_template_string(HTML)
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.get_json()
+    user_msg = data.get("message", "")
+
+    if not os.environ.get("OPENAI_API_KEY"):
+        return jsonify({"reply": "Falta poner la API KEY en Render > Environment"})
+
     try:
-        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-        r = client.chat.completions.create(
+        resp = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role":"user","content":pre
+            messages=[{"role": "user", "content": user_msg}]
+        )
+        reply = resp.choices[0].message.content
+        return jsonify({"reply": reply})
+    except Exception as e:
+        return jsonify({"reply": f"Error: {str(e)}"})
+
+if __name__ == "__main__":
+    app.run()
