@@ -26,4 +26,49 @@ button{padding:14px 18px;border-radius:12px;border:none;background:#00ff88;font-
 <input id='q' placeholder='Escribe aquí...'><button onclick='enviar()'>Enviar</button>
 <script>
 function enviar(){
- let q=document.getElementBy
+ let q=document.getElementById('q').value;
+ if(!q) return;
+ let chat=document.getElementById('chat');
+ chat.innerHTML+="<div class='msg user'>"+q+"</div>";
+ fetch('/cerebro?q='+encodeURIComponent(q))
+ .then(r=>r.json())
+ .then(d=>{
+   chat.innerHTML+="<div class='msg bot'>"+d.respuesta+"</div>";
+   chat.scrollTop=chat.scrollHeight;
+ });
+ document.getElementById('q').value='';
+}
+</script>
+</body></html>
+"""
+
+@app.route('/')
+def home():
+    return HTML
+
+@app.route('/cerebro')
+def cerebro():
+    q = request.args.get('q','').lower()
+    
+    # 1. Busca en su memoria interna
+    for palabra, respuesta in CEREBRO.items():
+        if palabra in q:
+            return jsonify({"respuesta": respuesta})
+
+    # 2. Respuestas inteligentes según lo que preguntes
+    if "hora" in q:
+        return jsonify({"respuesta": f"Son las {datetime.datetime.now().strftime('%H:%M')} horas. Tu servidor está corriendo bien."})
+    if "codigo" in q or "python" in q:
+        return jsonify({"respuesta": "Puedo ayudarte a programar. Dime qué quieres que haga tu app y te doy el código listo para pegar."})
+    if "render" in q:
+        return jsonify({"respuesta": "Estoy desplegada en Render, región Oregon, con Python 3 y estoy en estado Deployed ✅"})
+
+    # 3. Si no sabe, responde genérico pero inteligente
+    return jsonify({"respuesta": f"Entendí que me dices: '{q}'. Ya estoy aprendiendo. Si quieres que sea aún más inteligente, conéctame a la API de OpenAI y tendré cerebro de ChatGPT."})
+
+@app.route('/status')
+def status():
+    return jsonify({"status":"IA ACTIVA", "cerebro":"V2", "hora": str(datetime.datetime.now())})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
