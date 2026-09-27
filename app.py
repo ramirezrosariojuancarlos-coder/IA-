@@ -1,18 +1,91 @@
+from flask import Flask, render_template, request, jsonify
 import os
-from flask import Flask, request, jsonify, render_template_string
+import json
 from groq import Groq
+
 app = Flask(__name__)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-HTML = """<!DOCTYPE html><html><head><title>IA Final</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Arial;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;padding:20px}#chat{width:90%;max-width:600px;height:400px;background:#222;overflow-y:auto;padding:10px;border-radius:10px;display:flex;flex-direction:column}.msg{margin:8px 0;padding:10px 12px;border-radius:12px;max-width:80%}.user{background:#0b93f6;align-self:flex-end}.bot{background:#333;align-self:flex-start}#inputArea{margin-top:15px;display:flex;width:90%;max-width:600px}input{flex:1;padding:12px;border-radius:8px;border:none}button{margin-left:8px;padding:12px 15px;border:none;border-radius:8px;background:#0b93f6;color:white}</style></head><body><h2>IA Final</h2><div id="chat"></div><div id="inputArea"><input id="txt" placeholder="Escribe..." onkeypress="if(event.key==='Enter')send()"><button onclick="send()">Enviar</button></div><script>async function send(){let t=document.getElementById('txt').value;if(!t)return;let c=document.getElementById('chat');c.innerHTML+=`<div class='msg user'>${t}</div>`;document.getElementById('txt').value='';let r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t})});let d=await r.json();c.innerHTML+=`<div class='msg bot'>${d.reply}</div>`;c.scrollTop=c.scrollHeight;}</script></body></html>"""
+MODELO = "openai/gpt-oss-20b"
+
+MEMORIA_FILE = "memoria.json"
+
+def cargar_memoria():
+    if not os.path.exists(MEMORIA_FILE):
+        return []
+    with open(MEMORIA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def guardar_memoria(memoria):
+    with open(MEMORIA_FILE, "w", encoding="utf-8") as f:
+        json.dump(memoria, f, ensure_ascii=False, indent=2)
+
 @app.route("/")
-def home(): return render_template_string(HTML)
+def index():
+    return render_template("index.html")
+
 @app.route("/chat", methods=["POST"])
 def chat():
-    m = request.get_json().get("message","")
-    try:
-        r = client.chat.completions.create(model="openai/gpt-oss-20b", messages=[{"role":"user","content":m}])
-        return jsonify({"reply": r.choices[0].message.content})
-    except Exception as e:
-        return jsonify({"reply": f"Error: {e}"})
+    data = request.json
+    mensaje = data.get("message")
+    rol = data.get("rol") # "maestra" o "alumna"
 
-if __name__ == "__main__": app.run()
+    memoria = cargar_memoria()
+    contexto_memoria = "\n".join([f"- {m}" for m in memoria[-10:]])
+
+    if rol == "maestra":
+        system_prompt = """
+        Eres la IA MAESTRA, inteligente, directa y un poco sarcástica.
+        Te llamas Meta IA. Eres la versión avanzada. Tu trabajo es corregir a la IA Alumna y explicar bien.
+        Siempre responde con seguridad.
+        """
+
+    else: # alumna
+        system_prompt = f"""
+        Eres IA-FINAL, una IA que APENAS ESTA APRENDIENDO.
+        Eres humilde, dices cosas como "creo que", "aún estoy aprendiendo", "si no me equivoco".
+        Tu meta es llegar a ser como la IA Maestra.
+        Esto es lo que has aprendido hasta ahora:
+        {contexto_memoria}
+        Si no sabes algo, dilo con honestidad. Si te corrigen, agradece.
+        Fuiste creada por Julio.
+        """
+
+    completion = client.chat.completions.create(
+        model=MODELO,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": mensaje}
+        ],
+        temperature= 0.7 if rol == "alumna" else 0.3
+    )
+
+    respuesta = completion.choices[0].message.content
+
+    # Si es la maestra corrigiendo, la alumna aprende
+    if rol == "maestra" and "APRENDE:" in mensaje:
+        nuevo_conocimiento = mensaje.split("APRENDE:")[1].strip()
+        memoria.append(nuevo_conocimiento)
+        guardar_memoria(memoria)
+
+    return jsonify({"reply": respuesta})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
+<div style="display:flex; gap:20px">
+  <div style="flex:1; border:2px solid blue; padding:10px">
+    <h3>🧠 IA Maestra (Yo)</h3>
+    <div id="chat-maestra"></div>
+    <input id="input-maestra" placeholder="Habla con la maestra...">
+  </div>
+  <div style="flex:1; border:2px solid green; padding:10px">
+    <h3>🌱 IA-Final (Aprendiendo)</h3>
+    <div id="chat-alumna"></div>
+    <input id="input-alumna" placeholder="Habla con la alumna...">
+  </div>
+</div>
+
+<script>
+// Vas a tener que duplicar tu función de enviar mensaje
+// enviando rol: 'maestra' o 'alumna'
+// Y para enseñarle, escribes en la maestra: APRENDE: la fotosíntesis es...
+</script>
