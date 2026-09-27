@@ -6,11 +6,11 @@
 <style>
 body{font-family:Arial; background:#0f0f0f; color:white; margin:0; padding:15px}
 .container{display:flex; gap:15px; flex-wrap:wrap}
-.box{flex:1; min-width:300px; border-radius:15px; padding:15px; display:flex; flex-direction:column; height:85vh}
+.box{flex:1; min-width:300px; border-radius:15px; padding:15px; display:flex; flex-direction:column; height:75vh}
 #maestra{background:#1a237e; border:2px solid #536dfe}
 #alumna{background:#1b5e20; border:2px solid #66bb6a}
 .chat{flex:1; overflow-y:auto; background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; margin:10px 0}
-.msg{margin:8px 0; padding:8px 10px; border-radius:10px; max-width:90%}
+.msg{margin:8px 0; padding:8px 10px; border-radius:10px; max-width:90%; word-wrap:break-word}
 .user{background:#fff; color:#000; align-self:flex-end; margin-left:auto}
 .bot{background:rgba(255,255,255,0.15)}
 .input-area{display:flex; gap:5px}
@@ -18,21 +18,26 @@ input{flex:1; padding:12px; border-radius:20px; border:none}
 button{padding:12px 18px; border-radius:20px; border:none; font-weight:bold; cursor:pointer}
 h3{margin:0; text-align:center}
 small{opacity:0.7; text-align:center; display:block}
+.top-btn{text-align:center; margin-bottom:15px}
+.top-btn button{background:#ff4081; color:white; font-size:16px; padding:12px 25px; border-radius:30px; border:none; cursor:pointer}
 </style>
 </head>
 <body>
-<h2 style="text-align:center">🧠 IA Maestra vs 🌱 IA Alumno - Proyecto Final Julio</h2>
+<h2 style="text-align:center">IA Maestra vs IA Alumno - Proyecto Final Julio</h2>
+<div class="top-btn">
+  <button onclick="hablenSolas()">Hacer que hablen entre ellas</button>
+</div>
 <div class="container">
   <div class="box" id="maestra">
-    <h3>🧠 IA MAESTRA</h3><small>Modelo: gpt-oss-20b | Inteligente</small>
+    <h3>IA MAESTRA</h3><small>Modelo: gpt-oss-20b | Inteligente</small>
     <div class="chat" id="chatM"></div>
-    <div class="input-area"><input id="inM" placeholder="Escribe aquí..."><button onclick="enviar('maestra')">Enviar</button></div>
-    <small>Para enseñar usa: APRENDE: el sol es una estrella</small>
+    <div class="input-area"><input id="inM" placeholder="Escribe aqui..."><button onclick="enviar('maestra')">Enviar</button></div>
+    <small>Para ensenar usa: APRENDE: el sol es una estrella</small>
   </div>
   <div class="box" id="alumna">
-    <h3>🌱 IA-FINAL</h3><small>Modelo: gpt-oss-20b | Aprendiendo</small>
+    <h3>IA-FINAL</h3><small>Modelo: gpt-oss-20b | Aprendiendo</small>
     <div class="chat" id="chatA"></div>
-    <div class="input-area"><input id="inA" placeholder="Escribe aquí..."><button onclick="enviar('alumna')">Enviar</button></div>
+    <div class="input-area"><input id="inA" placeholder="Escribe aqui..."><button onclick="enviar('alumna')">Enviar</button></div>
   </div>
 </div>
 <script>
@@ -47,8 +52,19 @@ async function enviar(rol){
   chat.innerHTML += `<div class="msg bot">${data.reply}</div>`;
   chat.scrollTop = chat.scrollHeight;
 }
-document.getElementById('inM').addEventListener('keypress', e=>{if(e.key==='Enter') enviar('maestra')});
-document.getElementById('inA').addEventListener('keypress', e=>{if(e.key==='Enter') enviar('alumna')});
-</script>
-</body>
-</html>
+
+async function hablenSolas(){
+  let tema = prompt("De que quieres que hablen? Ej: el espacio, python, futbol");
+  if(!tema) return;
+  let chatM = document.getElementById('chatM');
+  chatM.innerHTML += `<div class="msg user">[TEMA PARA DEBATIR: ${tema}]</div>`;
+  // La maestra empieza
+  let resM = await fetch('/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message:`Inicia una conversacion con tu alumna IA-FINAL sobre: ${tema}. Explicale en 2 lineas.`, rol:'maestra'})});
+  let dataM = await resM.json();
+  chatM.innerHTML += `<div class="msg bot">${dataM.reply}</div>`;
+
+  // La alumna responde
+  setTimeout(async ()=>{
+    let chatA = document.getElementById('chatA');
+    chatA.innerHTML += `<div class="msg user">Mi maestra dijo: ${dataM.reply}</div>`;
+    let resA = await fetch('/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message:`Tu maestra te dijo: ${dataM.reply}. Res
