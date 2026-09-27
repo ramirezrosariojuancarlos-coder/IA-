@@ -17,8 +17,8 @@ def chat():
     try:
         resp = client.chat.completions.create(
             model="openai/gpt-oss-20b",
-            messages=[{"role":"system","content":"Eres IA Final, un asistente personal creado por Julio para su proyecto final. Eres amable, hablas en español mexicano y siempre ayudas. Nunca digas que eres de OpenAI o Groq, di que eres IA Final creada por Julio."},
-  {"role":"user","content":}]
+            messages=[{"role":"system","content"},
+  {"role":"user","content":}m]
         )
         return jsonify({"reply": resp.choices[0].message.content})
     except Exception as e:
