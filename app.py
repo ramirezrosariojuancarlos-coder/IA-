@@ -73,12 +73,12 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
 <div style="display:flex; gap:20px">
   <div style="flex:1; border:2px solid blue; padding:10px">
-    <h3>🧠 IA Maestra (Yo)</h3>
+    <h3> IA Maestra (Yo)</h3>
     <div id="chat-maestra"></div>
     <input id="input-maestra" placeholder="Habla con la maestra...">
   </div>
   <div style="flex:1; border:2px solid green; padding:10px">
-    <h3>🌱 IA-Final (Aprendiendo)</h3>
+    <h3> IA-Final (Aprendiendo)</h3>
     <div id="chat-alumna"></div>
     <input id="input-alumna" placeholder="Habla con la alumna...">
   </div>
