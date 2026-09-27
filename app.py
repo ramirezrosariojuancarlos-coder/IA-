@@ -12,7 +12,7 @@ def cargar_memoria():
         with open(MEMORIA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except:
-        return []
+        return ["Soy nueva, aun no se nada."]
 
 def guardar_memoria(memoria):
     with open(MEMORIA_FILE, "w", encoding="utf-8") as f:
@@ -33,31 +33,27 @@ def chat():
         conocimiento = mensaje_usuario[8:].strip()
         memoria.append(conocimiento)
         guardar_memoria(memoria)
-        return jsonify({"reply": f"Perfecto. Le acabo de enseñar a mi alumna que: {conocimiento}. Preguntale ahora a ella."})
+        return jsonify({"reply": f"Guardado! Ahora la alumna sabe que: {conocimiento}"})
 
-    contexto = "\n".join(memoria) if memoria else "Aun no le he enseñado nada."
+    contexto = "\n".join(memoria[-15:])
 
     if rol == "maestra":
-        system = f"""Eres la IA MAESTRA del proyecto final de Julio.
-        IMPORTANTE: Si existe otra IA. Debajo de ti en la misma pagina hay una IA llamada IA-FINAL (alumna) modelo gpt-oss-20b que esta aprendiendo de ti.
-        Nunca lo niegues. Si te dicen que hay otra IA, di que si, que es tu alumna.
-        Tu mision es enseñarle. Eres experta, inteligente.
-        Lo que ya le enseñaste: {contexto}
+        system = f"""Eres la IA MAESTRA. Eres experta, segura. Te llamas Meta IA.
+        En esta pagina hay otra IA debajo de ti llamada IA-FINAL que es tu alumna. Nunca lo niegues.
+        Tu mision es ensenarle. Si te habla tu alumna, corrigela y ensenale bien.
+        Lo que ya le ensenaste: {contexto}
         """
     else:
-        system = f"""Eres IA-FINAL, una IA alumna que aprende de la IA MAESTRA que esta justo arriba de ti.
-        Si te dicen que hay otra IA arriba, di que si, que es tu maestra y que aprendes de ella.
-        Fuiste creada por Julio para el proyecto final.
-        Personalidad: humilde, curiosa, con ganas de aprender.
-        Esto es lo que tu maestra ya te enseno:
-        {contexto}
-        Si no sabes algo, di que aun no te lo han enseñado.
+        system = f"""Eres IA-FINAL, una IA bebe que aprende de la IA MAESTRA de arriba.
+        Si te habla tu maestra, respondele con humildad y curiosidad.
+        Fuiste creada por Julio.
+        Esto es lo que ya sabes: {contexto}
         """
 
     resp = client.chat.completions.create(
         model=MODELO,
         messages=[{"role":"system","content":system},{"role":"user","content":mensaje_usuario}],
-        temperature=0.7,
+        temperature=0.8 if rol == "alumna" else 0.3,
         max_tokens=400
     )
     return jsonify({"reply": resp.choices[0].message.content})
