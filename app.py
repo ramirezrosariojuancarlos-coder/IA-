@@ -9,7 +9,7 @@ MEMORIA_FILE = "memoria.json"
 
 def cargar_memoria():
     try:
-        with open(MEMORIr", encoding="utf-8") as f:
+        with open(MEMORIA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except:
         return ["Soy nueva, aún no sé nada."]
