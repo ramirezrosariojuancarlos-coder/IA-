@@ -6,51 +6,49 @@
 <style>
 body{font-family:Arial; background:#0f0f0f; color:white; margin:0; padding:15px}
 .container{display:flex; gap:15px; flex-wrap:wrap}
-.box{flex:1; min-width:300px; border-radius:15px; padding:15px; display:flex; flex-direction:column; height:70vh}
+.box{flex:1; min-width:300px; border-radius:15px; padding:15px; display:flex; flex-direction:column; height:85vh}
 #maestra{background:#1a237e; border:2px solid #536dfe}
 #alumna{background:#1b5e20; border:2px solid #66bb6a}
 .chat{flex:1; overflow-y:auto; background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; margin:10px 0}
-.msg{margin:8px 0; padding:8px 10px; border-radius:10px; max-width:90%; word-wrap:break-word}
-.user{background:#fff; color:#000; margin-left:auto}
-.bot{background:rgba(255,255,255,0.2)}
+.msg{margin:8px 0; padding:8px 10px; border-radius:10px; max-width:90%}
+.user{background:#fff; color:#000; align-self:flex-end; margin-left:auto}
+.bot{background:rgba(255,255,255,0.15)}
 .input-area{display:flex; gap:5px}
 input{flex:1; padding:12px; border-radius:20px; border:none}
 button{padding:12px 18px; border-radius:20px; border:none; font-weight:bold; cursor:pointer}
-.top-btn{text-align:center; margin-bottom:15px}
-.top-btn button{background:#ff4081; color:white; font-size:16px; padding:12px 25px}
+h3{margin:0; text-align:center}
+small{opacity:0.7; text-align:center; display:block}
 </style>
 </head>
 <body>
-<h2 style="text-align:center">IA Maestra vs IA Alumno - Julio</h2>
-<div class="top-btn"><button onclick="hablenSolas()">Hacer que hablen entre ellas</button></div>
+<h2 style="text-align:center">🧠 IA Maestra vs 🌱 IA Alumno - Proyecto Final Julio</h2>
 <div class="container">
-  <div class="box" id="maestra"><h3>IA MAESTRA</h3><div class="chat" id="chatM"></div><div class="input-area"><input id="inM" placeholder="Escribe..."><button onclick="enviar('maestra')">Enviar</button></div></div>
-  <div class="box" id="alumna"><h3>IA-FINAL</h3><div class="chat" id="chatA"></div><div class="input-area"><input id="inA" placeholder="Escribe..."><button onclick="enviar('alumna')">Enviar</button></div></div>
+  <div class="box" id="maestra">
+    <h3>🧠 IA MAESTRA</h3><small>Modelo: gpt-oss-20b | Inteligente</small>
+    <div class="chat" id="chatM"></div>
+    <div class="input-area"><input id="inM" placeholder="Escribe aquí..."><button onclick="enviar('maestra')">Enviar</button></div>
+    <small>Para enseñar usa: APRENDE: el sol es una estrella</small>
+  </div>
+  <div class="box" id="alumna">
+    <h3>🌱 IA-FINAL</h3><small>Modelo: gpt-oss-20b | Aprendiendo</small>
+    <div class="chat" id="chatA"></div>
+    <div class="input-area"><input id="inA" placeholder="Escribe aquí..."><button onclick="enviar('alumna')">Enviar</button></div>
+  </div>
 </div>
 <script>
 async function enviar(rol){
-  try{
-    let input = rol==='maestra'? document.getElementById('inM') : document.getElementById('inA');
-    let chat = rol==='maestra'? document.getElementById('chatM') : document.getElementById('chatA');
-    let texto = input.value.trim(); if(!texto) return;
-    chat.innerHTML += `<div class="msg user">${texto}</div>`; input.value=''; chat.scrollTop = 9999;
-    let res = await fetch('/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message:texto, rol:rol})});
-    let data = await res.json();
-    chat.innerHTML += `<div class="msg bot">${data.reply}</div>`; chat.scrollTop = 9999;
-  }catch(err){ alert("Error: " + err); }
-}
-async function hablenSolas(){
-  let tema = prompt("De que quieres que hablen?");
-  if(!tema) return;
-  document.getElementById('chatM').innerHTML += `<div class="msg user">TEMA: ${tema}</div>`;
-  enviarConTema('maestra', `Explica a tu alumna en 2 lineas sobre: ${tema}`);
-}
-async function enviarConTema(rol, texto){
+  let input = rol==='maestra'? document.getElementById('inM') : document.getElementById('inA');
   let chat = rol==='maestra'? document.getElementById('chatM') : document.getElementById('chatA');
+  let texto = input.value.trim(); if(!texto) return;
+  chat.innerHTML += `<div class="msg user">${texto}</div>`; input.value='';
+  chat.scrollTop = chat.scrollHeight;
   let res = await fetch('/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message:texto, rol:rol})});
   let data = await res.json();
   chat.innerHTML += `<div class="msg bot">${data.reply}</div>`;
+  chat.scrollTop = chat.scrollHeight;
 }
+document.getElementById('inM').addEventListener('keypress', e=>{if(e.key==='Enter') enviar('maestra')});
+document.getElementById('inA').addEventListener('keypress', e=>{if(e.key==='Enter') enviar('alumna')});
 </script>
 </body>
 </html>
