@@ -1,48 +1,130 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IA Maestra - Julio</title>
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#1a237e">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IA Maestra</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
-body{font-family:Arial; background:#0f0f0f; color:white; margin:0; padding:15px; display:flex; justify-content:center}
-.box{width:100%; max-width:600px; background:#1a237e; border:2px solid #536dfe; border-radius:15px; padding:15px; display:flex; flex-direction:column; height:85vh}
-.chat{flex:1; overflow-y:auto; background:#f5f5ff; border-radius:10px; padding:12px; margin:10px 0; display:flex; flex-direction:column; gap:8px}
-.msg{margin:0; padding:10px 14px; border-radius:18px; max-width:85%; word-wrap:break-word; font-size:15px; line-height:1.3}
-.user{background:#536dfe; color:white; align-self:flex-end; border-bottom-right-radius:4px}
-.bot{background:white; color:#1a1a1a; align-self:flex-start; border-bottom-left-radius:4px; box-shadow:0 1px 2px rgba(0,0,0,0.2)}
-.input-area{display:flex; gap:8px}
-input{flex:1; padding:14px; border-radius:25px; border:none; outline:none; font-size:15px}
-button{padding:14px 22px; border-radius:25px; border:none; font-weight:bold; cursor:pointer; background:#536dfe; color:white}
-h3{text-align:center; margin:0 0 5px 0; letter-spacing:1px}
+    * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, sans-serif; background:#f0f2f5; height:100vh; display:flex; flex-direction:column; }
+  
+  .topbar {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 15px; background:#1a1a2e; color:white; z-index:10;
+  }
+  #menu-btn, #dots-btn {
+    font-size:26px; background:none; border:none; color:white; cursor:pointer; padding:5px;
+  }
+  .topbar h1 { font-size:18px; }
+
+  /* Menu lateral */
+  .side-menu {
+    position:fixed; top:0; left:-280px; width:260px; height:100%;
+    background:#16213e; padding-top:70px; transition:0.3s ease;
+    z-index:1001; display:flex; flex-direction:column;
+  }
+  .side-menu.open { left:0; }
+  .side-menu a {
+    display:flex; align-items:center; gap:14px;
+    padding:16px 20px; color:#ddd; text-decoration:none; border-bottom:1px solid #2a2a4a;
+  }
+  .side-menu a:hover { background:#1a1a2e; color:white; }
+  .material-icons { font-size:22px; }
+
+  #overlay {
+    display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.5); z-index:1000;
+  }
+  #overlay.show { display:block; }
+
+  /* Chat */
+  #chat-container { flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:12px; }
+  .msg { max-width:80%; padding:10px 14px; border-radius:15px; line-height:1.4; word-wrap:break-word; }
+  .user { align-self:flex-end; background:#0f3460; color:white; border-bottom-right-radius:3px; }
+  .bot { align-self:flex-start; background:white; color:#333; border-bottom-left-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); }
+
+  #input-area { display:flex; padding:10px; background:white; border-top:1px solid #ddd; }
+  #user-input { flex:1; padding:12px; border:1px solid #ddd; border-radius:25px; outline:none; }
+  #send-btn { margin-left:8px; padding:0 20px; border:none; background:#0f3460; color:white; border-radius:25px; cursor:pointer; }
 </style>
 </head>
 <body>
-<div class="box">
-  <h3>IA MAESTRA</h3>
-  <div class="chat" id="chat"></div>
-  <div class="input-area">
-    <input id="input" placeholder="Escribe aqui...">
-    <button onclick="enviar()">Enviar</button>
-  </div>
+
+<div class="topbar">
+  <button id="menu-btn">☰</button>
+  <h1>IA Maestra</h1>
+  <button id="dots-btn">⋮</button>
 </div>
+
+<div id="side-menu" class="side-menu">
+  <a href="#" onclick="closeMenu(); location.reload();"><span class="material-icons">home</span> Inicio</a>
+  <a href="#"><span class="material-icons">menu_book</span> Materias</a>
+  <a href="#" onclick="clearChat(); closeMenu();"><span class="material-icons">history</span> Borrar Historial</a>
+  <a href="#"><span class="material-icons">settings</span> Configuración</a>
+  <a href="#"><span class="material-icons">info</span> Acerca de</a>
+</div>
+<div id="overlay" onclick="closeMenu()"></div>
+
+<div id="chat-container">
+  <div class="msg bot">¡Hola! Soy tu IA Maestra. ¿Qué quieres aprender hoy?</div>
+</div>
+
+<div id="input-area">
+  <input type="text" id="user-input" placeholder="Escribe tu pregunta...">
+  <button id="send-btn">Enviar</button>
+</div>
+
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js');
+const menuBtn = document.getElementById('menu-btn');
+const sideMenu = document.getElementById('side-menu');
+const overlay = document.getElementById('overlay');
+const chatContainer = document.getElementById('chat-container');
+const userInput = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+
+menuBtn.onclick = () => {
+  sideMenu.classList.add('open');
+  overlay.classList.add('show');
 }
-async function enviar(){
-  let inp = document.getElementById('input');
-  let chat = document.getElementById('chat');
-  let texto = inp.value.trim(); if(!texto) return;
-  chat.innerHTML += `<div class="msg user">${texto}</div>`; inp.value='';
-  chat.scrollTop = chat.scrollHeight;
-  let res = await fetch('/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message:texto})});
-  let data = await res.json();
-  chat.innerHTML += `<div class="msg bot">${data.reply}</div>`;
-  chat.scrollTop = chat.scrollHeight;
+function closeMenu() {
+  sideMenu.classList.remove('open');
+  overlay.classList.remove('show');
 }
-document.getElementById('input').addEventListener('keypress', e=>{if(e.key==='Enter') enviar()});
+function clearChat() {
+  chatContainer.innerHTML = '<div class="msg bot">Chat borrado. ¿En qué te ayudo?</div>';
+}
+
+async function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text) return;
+  
+  chatContainer.innerHTML += `<div class="msg user">${text}</div>`;
+  userInput.value = '';
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+
+  const typing = document.createElement('div');
+  typing.className = 'msg bot';
+  typing.textContent = 'Escribiendo...';
+  chatContainer.appendChild(typing);
+
+  try {
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: text})
+    });
+    const data = await res.json();
+    typing.textContent = data.reply;
+  } catch(e) {
+    typing.textContent = 'Error de conexión.';
+  }
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+sendBtn.onclick = sendMessage;
+userInput.addEventListener('keypress', (e) => { if(e.key==='Enter') sendMessage(); });
 </script>
+
 </body>
 </html>
