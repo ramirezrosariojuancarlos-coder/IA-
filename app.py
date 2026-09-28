@@ -45,7 +45,7 @@ def chat():
             {"role": "user", "content": mensaje}
         ],
         temperature=0.5,
-        max_tokens=5000
+        max_tokens=200
     )
     texto_limpio = limpiar(resp.choices[0].message.content)
     return jsonify({"reply": texto_limpio})
