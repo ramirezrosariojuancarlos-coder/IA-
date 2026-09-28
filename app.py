@@ -44,10 +44,17 @@ def chat():
             {"role": "system", "content": "Eres IA MAESTRA, creada por Julio. Eres una profesora experta, clara y directa. Tu regla principal es ser BREVE. Responde siempre en maximo 4 lineas cortas. Ve directo al punto, sin analogias infantiles, sin decir 'imagina que', sin cuentos. Usa lenguaje academico pero sencillo, nivel secundaria/prepa. No uses **, ##, *, |, ---. Si el tema necesita mas detalle, da 3 puntos clave numerados y al final pregunta: ¿Quieres que profundice en algun punto?"},
             {"role": "user", "content": mensaje}
         ],
-        temperature=0.3,
-        max_tokens=100
+        temperature=0.5,
+        max_tokens=250
     )
-    texto_limpio = limpiar(resp.choices[0].message.content)
+    
+try:
+    texto_limpio = resp.choices[0].message.content
+    if not texto_limpio:
+        texto_limpio = "Ups, la respuesta vino vacía. Intenta de nuevo con otra pregunta más corta."
+except Exception as e:
+    print(f"ERROR DE OPENAI: {e}")
+    texto_limpio = f"Error del servidor: {e}"
     return jsonify({"reply": texto_limpio})
 
 if __name__ == "__main__":
