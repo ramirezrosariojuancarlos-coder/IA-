@@ -7,18 +7,13 @@
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Arial, sans-serif; background:#f0f2f5; height:100vh; display:flex; flex-direction:column; }
-  
+  body { font-family: Arial, sans-serif; background:#f0f2f5; height:100vh; display:flex; flex-direction:column; transition:0.3s; }
   .topbar {
     display:flex; justify-content:space-between; align-items:center;
     padding:12px 15px; background:#1a1a2e; color:white; z-index:10;
   }
-  #menu-btn, #dots-btn {
-    font-size:26px; background:none; border:none; color:white; cursor:pointer; padding:5px;
-  }
+  #menu-btn, #dots-btn { font-size:26px; background:none; border:none; color:white; cursor:pointer; padding:5px; }
   .topbar h1 { font-size:18px; }
-
-  /* Menu lateral */
   .side-menu {
     position:fixed; top:0; left:-280px; width:260px; height:100%;
     background:#16213e; padding-top:70px; transition:0.3s ease;
@@ -31,22 +26,19 @@
   }
   .side-menu a:hover { background:#1a1a2e; color:white; }
   .material-icons { font-size:22px; }
-
   #overlay {
     display:none; position:fixed; top:0; left:0; width:100%; height:100%;
     background:rgba(0,0,0,0.5); z-index:1000;
   }
   #overlay.show { display:block; }
-
-  /* Chat */
   #chat-container { flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:12px; }
-  .msg { max-width:80%; padding:10px 14px; border-radius:15px; line-height:1.4; word-wrap:break-word; }
+  .msg { max-width:85%; padding:10px 14px; border-radius:15px; line-height:1.4; word-wrap:break-word; font-size:15px; }
   .user { align-self:flex-end; background:#0f3460; color:white; border-bottom-right-radius:3px; }
   .bot { align-self:flex-start; background:white; color:#333; border-bottom-left-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); }
-
   #input-area { display:flex; padding:10px; background:white; border-top:1px solid #ddd; }
   #user-input { flex:1; padding:12px; border:1px solid #ddd; border-radius:25px; outline:none; }
   #send-btn { margin-left:8px; padding:0 20px; border:none; background:#0f3460; color:white; border-radius:25px; cursor:pointer; }
+  .materia-btn { margin:4px; padding:8px 12px; border-radius:20px; border:1px solid #0f3460; background:white; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -59,10 +51,10 @@
 
 <div id="side-menu" class="side-menu">
   <a href="#" onclick="closeMenu(); location.reload();"><span class="material-icons">home</span> Inicio</a>
-  <a href="#"><span class="material-icons">menu_book</span> Materias</a>
+  <a href="#" onclick="showMaterias()"><span class="material-icons">menu_book</span> Materias</a>
   <a href="#" onclick="clearChat(); closeMenu();"><span class="material-icons">history</span> Borrar Historial</a>
-  <a href="#"><span class="material-icons">settings</span> Configuración</a>
-  <a href="#"><span class="material-icons">info</span> Acerca de</a>
+  <a href="#" onclick="showConfig()"><span class="material-icons">settings</span> Configuración</a>
+  <a href="#" onclick="showAcerca()"><span class="material-icons">info</span> Acerca de</a>
 </div>
 <div id="overlay" onclick="closeMenu()"></div>
 
@@ -95,19 +87,78 @@ function clearChat() {
   chatContainer.innerHTML = '<div class="msg bot">Chat borrado. ¿En qué te ayudo?</div>';
 }
 
+// --- FUNCIONES DEL MENU ---
+function showMaterias() {
+  closeMenu();
+  chatContainer.innerHTML += `
+    <div class="msg bot">
+      <b>Elige una materia:</b><br><br>
+      <button class="materia-btn" onclick="askMateria('Matemáticas')">Matemáticas</button>
+      <button class="materia-btn" onclick="askMateria('Ciencias')">Ciencias</button>
+      <button class="materia-btn" onclick="askMateria('Español')">Español</button>
+      <button class="materia-btn" onclick="askMateria('Historia')">Historia</button>
+      <button class="materia-btn" onclick="askMateria('Inglés')">Inglés</button>
+      <button class="materia-btn" onclick="askMateria('Programación HTML')">Programación</button>
+    </div>`;
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+function askMateria(materia) {
+  userInput.value = `Quiero aprender sobre ${materia}`;
+  sendMessage();
+}
+function showConfig() {
+  closeMenu();
+  chatContainer.innerHTML += `
+    <div class="msg bot">
+      <b>Configuración:</b><br><br>
+      <button class="materia-btn" onclick="toggleDark()">🌙 Cambiar a modo oscuro</button><br><br>
+      <button class="materia-btn" onclick="changeSize(1)">A+ Texto más grande</button>
+      <button class="materia-btn" onclick="changeSize(-1)">A- Texto más chico</button>
+    </div>`;
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+let dark = false;
+function toggleDark() {
+  dark = !dark;
+  if(dark) {
+    document.body.style.background = '#121212';
+    chatContainer.style.background = '#121212';
+  } else {
+    document.body.style.background = '#f0f2f5';
+    chatContainer.style.background = '#f0f2f5';
+  }
+}
+function changeSize(dir) {
+  const msgs = document.querySelectorAll('.msg');
+  msgs.forEach(m => {
+    let size = parseFloat(window.getComputedStyle(m).fontSize);
+    m.style.fontSize = (size + dir) + 'px';
+  });
+}
+function showAcerca() {
+  closeMenu();
+  chatContainer.innerHTML += `
+    <div class="msg bot">
+      <b>IA Maestra - v1.0</b><br><br>
+      App educativa para aprender rápido.<br>
+      Creada en Zihuatanejo, Gro. 2026<br><br>
+      Da respuestas cortas y profesionales.
+    </div>`;
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// --- CHAT ---
 async function sendMessage() {
   const text = userInput.value.trim();
   if (!text) return;
-  
   chatContainer.innerHTML += `<div class="msg user">${text}</div>`;
   userInput.value = '';
   chatContainer.scrollTop = chatContainer.scrollHeight;
-
   const typing = document.createElement('div');
   typing.className = 'msg bot';
   typing.textContent = 'Escribiendo...';
   chatContainer.appendChild(typing);
-
+  chatContainer.scrollTop = chatContainer.scrollHeight;
   try {
     const res = await fetch('/chat', {
       method: 'POST',
@@ -121,10 +172,8 @@ async function sendMessage() {
   }
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
-
 sendBtn.onclick = sendMessage;
 userInput.addEventListener('keypress', (e) => { if(e.key==='Enter') sendMessage(); });
 </script>
-
 </body>
 </html>
