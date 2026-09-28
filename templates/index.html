@@ -2,20 +2,20 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IA Maestra - Carlos </title>
+<title>IA Maestra - Julio</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a237e">
 <style>
 body{font-family:Arial; background:#0f0f0f; color:white; margin:0; padding:15px; display:flex; justify-content:center}
 .box{width:100%; max-width:600px; background:#1a237e; border:2px solid #536dfe; border-radius:15px; padding:15px; display:flex; flex-direction:column; height:85vh}
-.chat{flex:1; overflow-y:auto; background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; margin:10px 0}
-.msg{margin:8px 0; padding:10px; border-radius:10px; max-width:90%; word-wrap:break-word}
-.user{background:#fff; color:#000; margin-left:auto; text-align:right}
-.bot{background:rgba(255,255,255,0.15)}
-.input-area{display:flex; gap:5px}
-input{flex:1; padding:12px; border-radius:20px; border:none}
-button{padding:12px 18px; border-radius:20px; border:none; font-weight:bold; cursor:pointer; background:#536dfe; color:white}
-h3{text-align:center; margin:0}
+.chat{flex:1; overflow-y:auto; background:#f5f5ff; border-radius:10px; padding:12px; margin:10px 0; display:flex; flex-direction:column; gap:8px}
+.msg{margin:0; padding:10px 14px; border-radius:18px; max-width:85%; word-wrap:break-word; font-size:15px; line-height:1.3}
+.user{background:#536dfe; color:white; align-self:flex-end; border-bottom-right-radius:4px}
+.bot{background:white; color:#1a1a1a; align-self:flex-start; border-bottom-left-radius:4px; box-shadow:0 1px 2px rgba(0,0,0,0.2)}
+.input-area{display:flex; gap:8px}
+input{flex:1; padding:14px; border-radius:25px; border:none; outline:none; font-size:15px}
+button{padding:14px 22px; border-radius:25px; border:none; font-weight:bold; cursor:pointer; background:#536dfe; color:white}
+h3{text-align:center; margin:0 0 5px 0; letter-spacing:1px}
 </style>
 </head>
 <body>
@@ -28,6 +28,9 @@ h3{text-align:center; margin:0}
   </div>
 </div>
 <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
 async function enviar(){
   let inp = document.getElementById('input');
   let chat = document.getElementById('chat');
@@ -40,11 +43,6 @@ async function enviar(){
   chat.scrollTop = chat.scrollHeight;
 }
 document.getElementById('input').addEventListener('keypress', e=>{if(e.key==='Enter') enviar()});
-</script>
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js');
-}
 </script>
 </body>
 </html>
