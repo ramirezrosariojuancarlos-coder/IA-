@@ -41,5 +41,10 @@ async function enviar(){
 }
 document.getElementById('input').addEventListener('keypress', e=>{if(e.key==='Enter') enviar()});
 </script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+</script>
 </body>
 </html>
