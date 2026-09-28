@@ -1,60 +1,18 @@
-from flask import Flask, render_template, request, jsonify
-import os, json
-from groq import Groq
+<div style="display:flex; gap:20px">
+  <div style="flex:1; border:2px solid blue; padding:10px">
+    <h3>🧠 IA Maestra (Yo)</h3>
+    <div id="chat-maestra"></div>
+    <input id="input-maestra" placeholder="Habla con la maestra...">
+  </div>
+  <div style="flex:1; border:2px solid green; padding:10px">
+    <h3>🌱 IA-Final (Aprendiendo)</h3>
+    <div id="chat-alumna"></div>
+    <input id="input-alumna" placeholder="Habla con la alumna...">
+  </div>
+</div>
 
-app = Flask(__name__)
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-MODELO = "openai/gpt-oss-20b"
-MEMORIA_FILE = "memoria.json"
-
-def cargar_memoria():
-    try:
-        with open(MEMORIA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return ["Soy nueva, aun no se nada."]
-
-def guardar_memoria(memoria):
-    with open(MEMORIA_FILE, "w", encoding="utf-8") as f:
-        json.dump(memoria, f, ensure_ascii=False, indent=2)
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.json
-    mensaje_usuario = data.get("message", "")
-    rol = data.get("rol", "alumna")
-    memoria = cargar_memoria()
-
-    if rol == "maestra" and mensaje_usuario.upper().startswith("APRENDE:"):
-        conocimiento = mensaje_usuario[8:].strip()
-        memoria.append(conocimiento)
-        guardar_memoria(memoria)
-        return jsonify({"reply": f"Guardado! Ahora la alumna sabe que: {conocimiento}"})
-
-    contexto = "\n".join(memoria[-15:])
-
-    if rol == "maestra":
-        system = "Eres la IA MAESTRA. Eres experta, segura, inteligente. Te llamas Meta IA. Tu mision es ser el ejemplo perfecto y corregir a la alumna. Respuestas cortas."
-    else:
-        system = f"""Eres IA-FINAL, una IA bebe que esta aprendiendo. Personalidad: humilde, curiosa, dices creo que, estoy aprendiendo.
-        Fuiste creada por Julio.
-        Tu meta es ser como la Maestra.
-        Esto es lo que ya has aprendido:
-        {contexto}
-        Si te preguntan quien eres, di que eres IA-Final, alumna de la IA Maestra.
-        """
-
-    resp = client.chat.completions.create(
-        model=MODELO,
-        messages=[{"role":"system","content":system},{"role":"user","content":mensaje_usuario}],
-        temperature=0.8 if rol == "alumna" else 0.3,
-        max_tokens=500
-    )
-    return jsonify({"reply": resp.choices[0].message.content})
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+<script>
+// Vas a tener que duplicar tu función de enviar mensaje
+// enviando rol: 'maestra' o 'alumna'
+// Y para enseñarle, escribes en la maestra: APRENDE: la fotosíntesis es...
+</script>
