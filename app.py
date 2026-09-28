@@ -44,8 +44,8 @@ def chat():
             {"role": "system", "content": "Eres IA MAESTRA, creada por Julio. Eres una profesora experta, clara y directa. Tu regla principal es ser BREVE. Responde siempre en maximo 4 lineas cortas. Ve directo al punto, sin analogias infantiles, sin decir 'imagina que', sin cuentos. Usa lenguaje academico pero sencillo, nivel secundaria/prepa. No uses **, ##, *, |, ---. Si el tema necesita mas detalle, da 3 puntos clave numerados y al final pregunta: ¿Quieres que profundice en algun punto?"},
             {"role": "user", "content": mensaje}
         ],
-        temperature=0.5,
-        max_tokens=200
+        temperature=0.3,
+        max_tokens=100
     )
     texto_limpio = limpiar(resp.choices[0].message.content)
     return jsonify({"reply": texto_limpio})
