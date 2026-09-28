@@ -1,43 +1,34 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IA Maestra - Julio</title>
-<style>
-body{font-family:Arial; background:#0f0f0f; color:white; margin:0; padding:15px; display:flex; justify-content:center}
-.box{width:100%; max-width:600px; background:#1a237e; border:2px solid #536dfe; border-radius:15px; padding:15px; display:flex; flex-direction:column; height:85vh}
-.chat{flex:1; overflow-y:auto; background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; margin:10px 0}
-.msg{margin:8px 0; padding:10px; border-radius:10px; max-width:90%; word-wrap:break-word}
-.user{background:#fff; color:#000; margin-left:auto; text-align:right}
-.bot{background:rgba(255,255,255,0.15)}
-.input-area{display:flex; gap:5px}
-input{flex:1; padding:12px; border-radius:20px; border:none}
-button{padding:12px 18px; border-radius:20px; border:none; font-weight:bold; cursor:pointer; background:#536dfe; color:white}
-h3{text-align:center; margin:0}
-</style>
-</head>
-<body>
-<div class="box">
-  <h3>IA MAESTRA</h3>
-  <div class="chat" id="chat"></div>
-  <div class="input-area">
-    <input id="input" placeholder="Escribe aqui...">
-    <button onclick="enviar()">Enviar</button>
-  </div>
-</div>
-<script>
-async function enviar(){
-  let inp = document.getElementById('input');
-  let chat = document.getElementById('chat');
-  let texto = inp.value.trim(); if(!texto) return;
-  chat.innerHTML += `<div class="msg user">${texto}</div>`; inp.value='';
-  chat.scrollTop = chat.scrollHeight;
-  let res = await fetch('/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message:texto})});
-  let data = await res.json();
-  chat.innerHTML += `<div class="msg bot">${data.reply}</div>`;
-  chat.scrollTop = chat.scrollHeight;
-}
-document.getElementById('input').addEventListener('keypress', e=>{if(e.key==='Enter') enviar()});
-</script>
-</body>
-</html>
+
+from flask import Flask, render_template, request, jsonify
+import os
+from groq import Groq
+
+app = Flask(__name__)
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+MODELO = "openai/gpt-oss-20b"
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    try:
+        data = request.get_json()
+        mensaje = data.get("message", "")
+
+        resp = client.chat.completions.create(
+            model=MODELO,
+            messages=[
+                {"role": "system", "content": "Eres la IA MAESTRA. Eres experta, segura, inteligente. Te llamas Meta IA. Fuiste creada por Julio. Respondes claro y directo."},
+                {"role": "user", "content": mensaje}
+            ],
+            temperature=0.3,
+            max_tokens=500
+        )
+        return jsonify({"reply": resp.choices[0].message.content})
+    except Exception as e:
+        return jsonify({"reply": f"Error: {str(e)}"})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
