@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IA Maestra</title>
+
+<!-- PWA - ESTO ARREGLA LO DE INSTALAR -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/4712/4712109.png">
+
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -14,7 +20,6 @@
   }
   #menu-btn, #dots-btn { font-size:26px; background:none; border:none; color:white; cursor:pointer; padding:5px; }
   .topbar h1 { font-size:18px; }
-
   .side-menu {
     position:fixed; top:0; left:-280px; width:260px; height:100%;
     background:#16213e; padding-top:70px; transition:0.3s ease;
@@ -27,8 +32,6 @@
   }
   .side-menu a:hover { background:#1a1a2e; color:white; }
   .material-icons { font-size:22px; }
-
-  /* Menu de 3 puntitos */
   .dots-menu {
     position:fixed; top:50px; right:10px; width:200px;
     background:white; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.2);
@@ -40,15 +43,12 @@
     padding:12px 15px; color:#333; text-decoration:none; font-size:14px;
   }
   .dots-menu a:hover { background:#f0f0f0; }
-
   #overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; }
   #overlay.show { display:block; }
-
   #chat-container { flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:12px; }
   .msg { max-width:85%; padding:10px 14px; border-radius:15px; line-height:1.4; word-wrap:break-word; font-size:15px; }
   .user { align-self:flex-end; background:#0f3460; color:white; border-bottom-right-radius:3px; }
   .bot { align-self:flex-start; background:white; color:#333; border-bottom-left-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); }
-
   #input-area { display:flex; padding:10px; background:white; border-top:1px solid #ddd; }
   #user-input { flex:1; padding:12px; border:1px solid #ddd; border-radius:25px; outline:none; }
   #send-btn { margin-left:8px; padding:0 20px; border:none; background:#0f3460; color:white; border-radius:25px; cursor:pointer; }
@@ -96,7 +96,6 @@ const chatContainer = document.getElementById('chat-container');
 const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
 
-// Menu rayitas
 menuBtn.onclick = () => {
   sideMenu.classList.add('open');
   overlay.classList.add('show');
@@ -109,18 +108,17 @@ function clearChat() {
   chatContainer.innerHTML = '<div class="msg bot">Chat borrado. ¿En qué te ayudo?</div>';
 }
 
-// Menu puntitos
 dotsBtn.onclick = (e) => {
   e.stopPropagation();
   dotsMenu.classList.toggle('open');
 }
 function closeDots() { dotsMenu.classList.remove('open'); }
 document.addEventListener('click', () => closeDots());
+
 function copyLast() {
   const bots = document.querySelectorAll('.msg.bot');
   if(bots.length > 0) {
-    const last = bots[bots.length - 1].innerText;
-    navigator.clipboard.writeText(last);
+    navigator.clipboard.writeText(bots[bots.length - 1].innerText);
     alert('Respuesta copiada!');
   }
 }
@@ -132,16 +130,11 @@ function shareLast() {
   const bots = document.querySelectorAll('.msg.bot');
   if(bots.length > 0) {
     const last = bots[bots.length - 1].innerText;
-    if(navigator.share) {
-      navigator.share({ title: 'IA Maestra', text: last });
-    } else {
-      navigator.clipboard.writeText(last);
-      alert('Copiado para compartir');
-    }
+    if(navigator.share) { navigator.share({ title: 'IA Maestra', text: last }); }
+    else { navigator.clipboard.writeText(last); alert('Copiado para compartir'); }
   }
 }
 
-// Funciones materias
 function showMaterias() {
   closeMenu();
   chatContainer.innerHTML += `
@@ -156,20 +149,10 @@ function showMaterias() {
     </div>`;
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
-function askMateria(materia) {
-  userInput.value = `Quiero aprender sobre ${materia}`;
-  sendMessage();
-}
+function askMateria(m) { userInput.value = `Quiero aprender sobre ${m}`; sendMessage(); }
 function showConfig() {
   closeMenu();
-  chatContainer.innerHTML += `
-    <div class="msg bot">
-      <b>Configuración:</b><br><br>
-      <button class="materia-btn" onclick="toggleDark()">🌙 Modo oscuro</button><br><br>
-      <button class="materia-btn" onclick="changeSize(1)">A+ Texto grande</button>
-      <button class="materia-btn" onclick="changeSize(-1)">A- Texto chico</button>
-    </div>`;
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  chatContainer.innerHTML += `<div class="msg bot"><b>Configuración:</b><br><br><button class="materia-btn" onclick="toggleDark()">🌙 Modo oscuro</button><br><br><button class="materia-btn" onclick="changeSize(1)">A+ Texto grande</button> <button class="materia-btn" onclick="changeSize(-1)">A- Texto chico</button></div>`;
 }
 let dark = false;
 function toggleDark() {
@@ -179,17 +162,14 @@ function toggleDark() {
 }
 function changeSize(dir) {
   document.querySelectorAll('.msg').forEach(m => {
-    let size = parseFloat(window.getComputedStyle(m).fontSize);
-    m.style.fontSize = (size + dir) + 'px';
+    m.style.fontSize = (parseFloat(window.getComputedStyle(m).fontSize) + dir) + 'px';
   });
 }
 function showAcerca() {
   closeMenu();
-  chatContainer.innerHTML += `<div class="msg bot"><b>IA Maestra - v1.0</b><br><br>App educativa creada por ti en Zihuatanejo, 2026.</div>`;
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  chatContainer.innerHTML += `<div class="msg bot"><b>IA Maestra - v1.0</b><br>App creada en Zihuatanejo, 2026.</div>`;
 }
 
-// Chat
 async function sendMessage() {
   const text = userInput.value.trim();
   if (!text) return;
@@ -200,22 +180,20 @@ async function sendMessage() {
   typing.className = 'msg bot';
   typing.textContent = 'Escribiendo...';
   chatContainer.appendChild(typing);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
   try {
-    const res = await fetch('/chat', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({message: text})
-    });
+    const res = await fetch('/chat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({message: text}) });
     const data = await res.json();
     typing.textContent = data.reply;
-  } catch(e) {
-    typing.textContent = 'Error de conexión.';
-  }
+  } catch(e) { typing.textContent = 'Error de conexión.'; }
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 sendBtn.onclick = sendMessage;
 userInput.addEventListener('keypress', (e) => { if(e.key==='Enter') sendMessage(); });
+
+// REGISTRAR SERVICE WORKER PARA INSTALAR
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
 </script>
 </body>
 </html>
