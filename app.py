@@ -8,10 +8,12 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 MODELO = "openai/gpt-oss-20b"
 
 def limpiar(texto):
-    texto = re.sub(r'\*\*(.*?)\*\*', r'\1', texto)
-    texto = re.sub(r'#{1,6}\s?', '', texto)
-    texto = re.sub(r'\|', ' ', texto)
+    # Quita todo el markdown feo
+    texto = re.sub(r'\*\*(.*?)\*\*', r'\1', texto) # **negrita**
+    texto = re.sub(r'#{1,6}\s?', '', texto) # ## titulos
+    texto = re.sub(r'\|', ' ', texto) # tablas |
     texto = re.sub(r'---', '', texto)
+    texto = re.sub(r'```.*?```', '', texto, flags=re.DOTALL)
     texto = re.sub(r'`', '', texto)
     texto = re.sub(r'\*', '', texto)
     return texto.strip()
@@ -32,29 +34,16 @@ def sw():
 def chat():
     data = request.get_json()
     mensaje = data.get("message", "")
-
-    # Si el usuario pregunta por tus instrucciones, no las muestres
-    if "que significa" in mensaje.lower() and len(mensaje) < 30:
-        # Evita que repita el prompt
-        pass
-
     resp = client.chat.completions.create(
         model=MODELO,
         messages=[
-            {"role": "system", "content": "Eres IA MAESTRA, creada por Julio. Eres una profesora experta, clara y directa. Tu regla principal es ser BREVE. Responde siempre en maximo 4 lineas cortas. Ve directo al punto, sin analogias infantiles, sin decir 'imagina que', sin cuentos. Usa lenguaje academico pero sencillo, nivel secundaria/prepa. No uses **, ##, *, |, ---. Si el tema necesita mas detalle, da 3 puntos clave numerados y al final pregunta: ¿Quieres que profundice en algun punto?"},
+            {"role": "system", "content": "Eres la IA MAESTRA. Creada por Julio. REGLA OBLIGATORIA: Responde siempre en texto plano, limpio, sin markdown. Prohibido usar **, ##, *, |, ---, tablas, negritas, codigos. Usa solo texto normal, parrafos cortos y listas simples con guion - si es necesario. Respuestas cortas, claras y directas."},
             {"role": "user", "content": mensaje}
         ],
-        temperature=0.5,
-        max_tokens=250
+        temperature=0.3,
+        max_tokens=600
     )
-    
-try:
-    texto_limpio = resp.choices[0].message.content
-    if not texto_limpio:
-        texto_limpio = "Ups, la respuesta vino vacía. Intenta de nuevo con otra pregunta más corta."
-except Exception as e:
-    print(f"ERROR DE OPENAI: {e}")
-    texto_limpio = f"Error del servidor: {e}"
+    texto_limpio = limpiar(resp.choices[0].message.content)
     return jsonify({"reply": texto_limpio})
 
 if __name__ == "__main__":
