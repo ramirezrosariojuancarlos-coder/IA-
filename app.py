@@ -40,8 +40,8 @@ def chat():
             {"role": "system", "content": "Eres la IA MAESTRA. Creada por Julio. REGLA OBLIGATORIA: Responde siempre en texto plano, limpio, sin markdown. Prohibido usar **, ##, *, |, ---, tablas, negritas, codigos. Usa solo texto normal, parrafos cortos y listas simples con guion - si es necesario. Respuestas cortas, claras y directas."},
             {"role": "user", "content": mensaje}
         ],
-        temperature=0.3,
-        max_tokens=600
+        temperature=0.5,
+        max_tokens=250
     )
     texto_limpio = limpiar(resp.choices[0].message.content)
     return jsonify({"reply": texto_limpio})
