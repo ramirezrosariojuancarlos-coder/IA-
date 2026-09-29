@@ -3,6 +3,23 @@ import os
 import re
 from groq import Groq
 
+# Crea iconos si no existen
+try:
+    from PIL import Image, ImageDraw
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
+    os.makedirs(TEMPLATES_DIR, exist_ok=True)
+    for size in [192, 512]:
+        path = os.path.join(TEMPLATES_DIR, f'icon-{size}.png')
+        if not os.path.exists(path):
+            img = Image.new('RGB', (size, size), '#4f46e5')
+            d = ImageDraw.Draw(img)
+            # Dibuja un circulo blanco simple como logo temporal
+            d.ellipse([size*0.2, size*0.2, size*0.8, size*0.8], fill='white')
+            img.save(path)
+except:
+    pass
+
 app = Flask(__name__, template_folder='templates')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
@@ -43,7 +60,6 @@ def icon512():
 def chat():
     data = request.get_json()
     mensaje = data.get("message", "")
-
     resp = client.chat.completions.create(
         model=MODELO,
         messages=[
