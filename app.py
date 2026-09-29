@@ -16,7 +16,7 @@ def sw():
     return send_from_directory('.', 'sw.js')
 
 @app.route('/chat', methods=['POST'])
-def chat():
+def chat(): 
     data = request.get_json()
     msg = data.get('message', '') if data else ''
     reply = f"Me preguntaste: {msg}. ¡Vamos a aprender juntos!"
