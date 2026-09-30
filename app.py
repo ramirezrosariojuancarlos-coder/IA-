@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import os, re, requests
 from groq import Groq
@@ -7,7 +8,8 @@ app = Flask(__name__, template_folder='templates')
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-MODELO = "openai/gpt-oss-20b"
+MODELO_TEXTO = "openai/gpt-oss-20b"
+MODELO_VISION = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 def limpiar(t):
     t = re.sub(r'\*\*(.*?)\*\*', r'\1', t)
@@ -17,8 +19,6 @@ def limpiar(t):
 def leer_link(url):
     try:
         r = requests.get(f"https://cc.jina.ai/{url}", timeout=12, headers={"User-Agent":"Mozilla/5.0"})
-        if len(r.text) < 100:
-            r = requests.get(f"https://r.jina.ai/http://{url.replace('https://','').replace('http://','')}", timeout=12)
         return r.text[:4000]
     except: return ""
 
@@ -37,34 +37,17 @@ def get_latinus():
 def inyectar_tiempo_real(pregunta):
     lower = pregunta.lower()
     contexto = ""
-
     urls = re.findall(r'(https?://\S+)', pregunta)
     for url in urls[:2]:
-        contenido = leer_link(url)
-        if contenido:
-            contexto += f"\nCONTENIDO REAL DE LA WEB {url}:\n{contenido[:3000]}\n"
-
-    if any(x in lower for x in ["noticia", "latinus", "politica", "morena", "sheinbaum", "amlo"]):
+        c = leer_link(url)
+        if c: contexto += f"\nWEB REAL {url}:\n{c[:3000]}\n"
+    if any(x in lower for x in ["noticia", "latinus", "morena", "sheinbaum"]):
         contexto += f"\nNOTICIAS LATINUS HOY:\n{get_latinus()}\n"
-
     if "dolar" in lower or "dólar" in lower or "usd" in lower:
         try:
-            # API mas exacta y gratis
             r = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=6).json()
-            mxn = r["rates"]["MXN"]
-            contexto += f"\nDATO REAL Y ACTUAL: Dolar hoy 1 USD = {mxn:.4f} MXN (29 sept 2026)\n"
-        except:
-            try:
-                mxn = requests.get("https://open.er-api.com/v6/latest/USD", timeout=6).json()["rates"]["MXN"]
-                contexto += f"\nDATO REAL: Dolar hoy 1 USD = {mxn:.2f} MXN\n"
-            except: pass
-
-    if "clima" in lower:
-        try:
-            c = requests.get("https://wttr.in/Zihuatanejo?format=%C+%t", timeout=5).text
-            contexto += f"\nDATO REAL: Clima Zihuatanejo/Coyuca ahora: {c}\n"
+            contexto += f"\nDolar hoy 1 USD = {r['rates']['MXN']:.4f} MXN\n"
         except: pass
-
     return contexto
 
 @app.route("/")
@@ -83,23 +66,27 @@ def chat():
     data = request.get_json()
     mensaje = data.get("message","")
     historial = data.get("history",[])
+    imagen = data.get("image", None)
     extra = inyectar_tiempo_real(mensaje)
-
-    system = f"""Eres IA Maestra, creada por Julio. Tienes acceso a internet real.
-REGLA: Nunca digas que no tienes acceso a tiempo real. Usa los datos inyectados.
-Datos reales de hoy: {extra}
-"""
+    system = f"Eres IA Maestra, creada por J Carlos Double R. Eres maestra que explica con imagenes. Datos reales: {extra}"
 
     msgs = [{"role":"system","content":system}]
-    msgs.extend(historial[-10:])
-    msgs.append({"role":"user","content":mensaje})
+    msgs.extend(historial[-8:])
 
-    resp = client.chat.completions.create(
-        model=MODELO,
-        messages=msgs,
-        temperature=0.6,
-        max_tokens=800
-    )
+    if imagen:
+        msgs.append({
+            "role":"user",
+            "content": [
+                {"type":"text","text": mensaje},
+                {"type":"image_url","image_url":{"url": imagen}}
+            ]
+        })
+        modelo_usar = MODELO_VISION
+    else:
+        msgs.append({"role":"user","content": mensaje})
+        modelo_usar = MODELO_TEXTO
+
+    resp = client.chat.completions.create(model=modelo_usar, messages=msgs, temperature=0.6, max_tokens=900)
     return jsonify({"reply": limpiar(resp.choices[0].message.content)})
 
 if __name__ == "__main__":
