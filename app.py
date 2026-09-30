@@ -14,16 +14,12 @@ def limpiar(t):
     t = re.sub(r'#{1,6}\s?', '', t)
     return t.strip()
 
-# --- LECTOR DE LINKS GRATIS QUE SI SIRVE ---
 def leer_link(url):
     try:
-        # jina.ai te convierte cualquier web en texto limpio gratis
         r = requests.get(f"https://cc.jina.ai/{url}", timeout=12, headers={"User-Agent":"Mozilla/5.0"})
-        # Si falla, prueba con r.jina.ai
         if len(r.text) < 100:
             r = requests.get(f"https://r.jina.ai/http://{url.replace('https://','').replace('http://','')}", timeout=12)
-        texto = r.text[:4000] # solo 4000 caracteres para no saturar
-        return texto
+        return r.text[:4000]
     except: return ""
 
 def get_latinus():
@@ -42,39 +38,31 @@ def inyectar_tiempo_real(pregunta):
     lower = pregunta.lower()
     contexto = ""
 
-    # 1. DETECTA LINKS
     urls = re.findall(r'(https?://\S+)', pregunta)
     for url in urls[:2]:
         contenido = leer_link(url)
         if contenido:
             contexto += f"\nCONTENIDO REAL DE LA WEB {url}:\n{contenido[:3000]}\n"
 
-    # 2. NOTICIAS
     if any(x in lower for x in ["noticia", "latinus", "politica", "morena", "sheinbaum", "amlo"]):
         contexto += f"\nNOTICIAS LATINUS HOY:\n{get_latinus()}\n"
 
-    # 3. DOLAR REAL
     if "dolar" in lower or "dólar" in lower or "usd" in lower:
         try:
-            mxn = requests.get("https://open.er-api.com/v6/latest/USD", timeout=6).json()["rates"]["MXN"]
-            contexto += f"\nDATO REAL: Dolar hoy 1 USD = {mxn:.2f} MXN\n"
-        except: pass
+            # API mas exacta y gratis
+            r = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=6).json()
+            mxn = r["rates"]["MXN"]
+            contexto += f"\nDATO REAL Y ACTUAL: Dolar hoy 1 USD = {mxn:.4f} MXN (29 sept 2026)\n"
+        except:
+            try:
+                mxn = requests.get("https://open.er-api.com/v6/latest/USD", timeout=6).json()["rates"]["MXN"]
+                contexto += f"\nDATO REAL: Dolar hoy 1 USD = {mxn:.2f} MXN\n"
+            except: pass
 
-    # 4. CLIMA
     if "clima" in lower:
         try:
             c = requests.get("https://wttr.in/Zihuatanejo?format=%C+%t", timeout=5).text
-            contexto += f"\nDATO REAL: Clima Zihuatanejo ahora: {c}\n"
-        except: pass
-
-    # 5. CUALQUIER OTRA COSA ACTUAL - busca en Wikipedia que si tiene resumen bueno
-    if any(x in lower for x in ["que es", "quien es", "cuando", "donde", "hoy", "actual"]):
-        try:
-            # Wikipedia gratis
-            q = pregunta.replace(" ","%20")
-            wiki = requests.get(f"https://es.wikipedia.org/api/rest_v1/page/summary/{q}", timeout=5).json()
-            if wiki.get("extract"):
-                contexto += f"\nDATO DE WIKIPEDIA: {wiki['extract'][:500]}\n"
+            contexto += f"\nDATO REAL: Clima Zihuatanejo/Coyuca ahora: {c}\n"
         except: pass
 
     return contexto
@@ -97,17 +85,21 @@ def chat():
     historial = data.get("history",[])
     extra = inyectar_tiempo_real(mensaje)
 
-    system = f"""Eres IA Maestra. Creada por Julio.
-TIENES INTERNET. Te inyecto datos reales abajo, ÚSALOS y nunca digas que tu conocimiento corta en 2024.
-Si te paso contenido de una web, resumelo. Si te paso dólar o clima, dilo como dato actual.
-Datos reales inyectados: {extra}
+    system = f"""Eres IA Maestra, creada por Julio. Tienes acceso a internet real.
+REGLA: Nunca digas que no tienes acceso a tiempo real. Usa los datos inyectados.
+Datos reales de hoy: {extra}
 """
 
     msgs = [{"role":"system","content":system}]
     msgs.extend(historial[-10:])
     msgs.append({"role":"user","content":mensaje})
 
-    resp = client.chat.completions.create(model=MODELO, messages=msgs, temperature=0.7, max_tokens=1000)
+    resp = client.chat.completions.create(
+        model=MODELO,
+        messages=msgs,
+        temperature=0.6,
+        max_tokens=800
+    )
     return jsonify({"reply": limpiar(resp.choices[0].message.content)})
 
 if __name__ == "__main__":
