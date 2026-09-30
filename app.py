@@ -4,16 +4,24 @@ from groq import Groq
 
 app = Flask(__name__, template_folder='templates')
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
-app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-# MODELOS QUE SÍ FUNCIONAN HOY EN GROQ GRATIS
-MODELO_TEXTO = "openai/gpt-oss-20b" # 1000 tokens/s, gratis
-MODELO_VISION = "meta-llama/llama-4-maverick-17b-128e-instruct" # vision 600 t/s
+# MODELOS ACTUALES SEPT 2026 - GROQ APAGÓ LLAMA-4
+MODELO_TEXTO = "llama-3.1-8b-instant" # gratis, rápido
+MODELO_VISION = "meta-llama/llama-4-scout-17b-16e-instruct" # probamos scout primero
+MODELO_VISION_RESPALDO = "qwen/qwen3-32b" # si scout falla, usa qwen
 
-def limpiar(t):
-    return re.sub(r'\*\*(.*?)\*\*', r'\1', t).strip()
+def limpiar(t): return re.sub(r'\*\*(.*?)\*\*', r'\1', t).strip()
+
+def prompt_por_nivel(nivel):
+    prompts = {
+        "primaria": "Explica como para niño de 10 años, con palabras muy fáciles, ejemplos con dibujitos, y muy corto.",
+        "secundaria": "Explica como para secundaria, claro, paso a paso, sin palabras difíciles.",
+        "preparatoria": "Explica como para prepa, con un poco más de análisis y términos técnicos pero claro.",
+        "universidad": "Explica como para universidad, con análisis profundo, fuentes, crítica y estructura formal."
+    }
+    return prompts.get(nivel, prompts["secundaria"])
 
 @app.route("/")
 def index(): return render_template("index.html")
@@ -30,34 +38,35 @@ def icon512(): return send_from_directory(TEMPLATES_DIR, 'icon-512.png')
 def chat():
     try:
         data = request.get_json(force=True)
-        mensaje = data.get("message","").strip()
+        mensaje = data.get("message","")
         historial = data.get("history",[])
         imagen = data.get("image")
+        nivel = data.get("nivel","secundaria")
 
-        if not mensaje and not imagen:
-            return jsonify({"reply": "Mándame foto con texto."})
-
-        system = "Eres IA Maestra, creada por J Carlos Double R. Si te mandan imagen, léela y resuelve corto para secundaria."
+        estilo = prompt_por_nivel(nivel)
+        system = f"Eres IA Maestra creada por J Carlos Double R. Nivel actual: {nivel}. {estilo} Si hay imagen, léela completa."
 
         msgs = [{"role":"system","content":system}]
         for m in historial[-4:]:
-            if isinstance(m, dict) and "role" in m:
-                msgs.append(m)
+            if isinstance(m, dict): msgs.append(m)
 
         if imagen:
-            msgs.append({
-                "role":"user",
-                "content": [
-                    {"type":"text","text": mensaje if mensaje else "Transcribe y resuelve esta tarea. Corto para secundaria."},
-                    {"type":"image_url","image_url":{"url": imagen}}
-                ]
-            })
+            msgs.append({"role":"user","content":[
+                {"type":"text","text": mensaje},
+                {"type":"image_url","image_url":{"url": imagen}}
+            ]})
             modelo = MODELO_VISION
         else:
             msgs.append({"role":"user","content": mensaje})
             modelo = MODELO_TEXTO
 
-        resp = client.chat.completions.create(model=modelo, messages=msgs, temperature=0.4, max_tokens=500)
+        try:
+            resp = client.chat.completions.create(model=modelo, messages=msgs, temperature=0.4, max_tokens=600)
+        except Exception as e:
+            # Si scout no existe en tu cuenta, usa qwen automáticamente
+            print(f"Modelo {modelo} falló, probando respaldo: {e}")
+            resp = client.chat.completions.create(model=MODELO_VISION_RESPALDO, messages=msgs, temperature=0.4, max_tokens=600)
+
         return jsonify({"reply": limpiar(resp.choices[0].message.content)})
     except Exception as e:
         traceback.print_exc()
