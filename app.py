@@ -1,106 +1,92 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
-import os, re, requests
-from groq import Groq
-import xml.etree.ElementTree as ET
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IA Maestra - J Carlos Double R</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#0f0f0f;color:white;display:flex;flex-direction:column;height:100vh}
+header{background:#1a1a1a;padding:15px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #333}
+.logo{display:flex;align-items:center;gap:10px}
+.logo img{width:35px;height:35px;border-radius:8px;background:white;object-fit:cover}
+.logo h1{font-size:18px}
+#chat{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:15px}
+.msg{max-width:80%;padding:12px 16px;border-radius:15px;line-height:1.4;font-size:15px}
+.user{background:#2d5bff;align-self:flex-end;border-bottom-right-radius:4px}
+.bot{background:#222;align-self:flex-start;border-bottom-left-radius:4px;border:1px solid #333}
+.input-area{display:flex;padding:15px;background:#1a1a1a;border-top:1px solid #333;gap:10px}
+.input-area input{flex:1;padding:12px 15px;border-radius:25px;border:none;background:#2a2a2a;color:white;outline:none}
+.input-area button{padding:12px 20px;border-radius:25px;border:none;background:#2d5bff;color:white;font-weight:bold;cursor:pointer}
+footer{text-align:center;padding:8px;font-size:12px;color:#666}
+footer a{color:#888;text-decoration:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <!-- Si tienes logo.png ponlo en templates y cambia src -->
+    <img src="/icon-192.png" alt="logo">
+    <h1>IA Maestra</h1>
+  </div>
+  <div style="font-size:13px;color:#aaa;">J Carlos Double R</div>
+</header>
 
-app = Flask(__name__, template_folder='templates')
-TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+<div id="chat">
+  <div class="msg bot">Hola, soy IA Maestra. Creada por <b>J Carlos Double R</b>. ¿En qué te ayudo hoy? Puedo leer links, darte el dólar real y noticias de Latinus.</div>
+</div>
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-MODELO = "openai/gpt-oss-20b"
+<div class="input-area">
+  <input type="text" id="input" placeholder="Escribe o pega un link..." onkeypress="if(event.key==='Enter') enviar()">
+  <button onclick="enviar()">Enviar</button>
+</div>
 
-def limpiar(t):
-    t = re.sub(r'\*\*(.*?)\*\*', r'\1', t)
-    t = re.sub(r'#{1,6}\s?', '', t)
-    return t.strip()
+<footer>
+  <a href="#" onclick="abrirAcerca()">Acerca de</a> • Creado por J Carlos Double R
+</footer>
 
-def leer_link(url):
-    try:
-        r = requests.get(f"https://cc.jina.ai/{url}", timeout=12, headers={"User-Agent":"Mozilla/5.0"})
-        if len(r.text) < 100:
-            r = requests.get(f"https://r.jina.ai/http://{url.replace('https://','').replace('http://','')}", timeout=12)
-        return r.text[:4000]
-    except: return ""
+<!-- MODAL ACERCA DE -->
+<div id="modalAcerca" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999;">
+  <div style="background:#1e1e1e; max-width:380px; margin:20% auto; padding:30px; border-radius:20px; text-align:center; border:1px solid #333;">
+    <img src="/icon-192.png" style="width:80px;height:80px;border-radius:15px;margin-bottom:15px;background:white;">
+    <h2>IA Maestra</h2>
+    <p style="color:#aaa; margin:10px 0;">v2.0 - Tiempo Real</p>
+    <hr style="border:none; border-top:1px solid #333; margin:15px 0;">
+    <p style="font-size:18px; font-weight:bold;">Creado por<br>J Carlos Double R</p>
+    <p style="font-size:13px; color:#777; margin-top:10px;">Coyuca de Benítez, Gro. México<br>Proyecto Escolar 2026<br>Con acceso a internet real, lector de links y noticias Latinus</p>
+    <button onclick="cerrarAcerca()" style="margin-top:20px; padding:10px 25px; border:none; background:white; color:black; border-radius:10px; font-weight:bold; cursor:pointer;">Cerrar</button>
+  </div>
+</div>
 
-def get_latinus():
-    try:
-        r = requests.get("https://latinus.us/feed/", timeout=8, headers={"User-Agent":"Mozilla/5.0"})
-        root = ET.fromstring(r.content)
-        out=[]
-        for item in root.findall(".//item")[:4]:
-            t = item.find("title").text or ""
-            d = re.sub(r'<[^>]+>', '', item.find("description").text or "")[:180]
-            out.append(f"- {t}: {d}")
-        return "\n".join(out)
-    except: return ""
+<script>
+let historial = [];
+function abrirAcerca(){ document.getElementById('modalAcerca').style.display='block'; }
+function cerrarAcerca(){ document.getElementById('modalAcerca').style.display='none'; }
 
-def inyectar_tiempo_real(pregunta):
-    lower = pregunta.lower()
-    contexto = ""
+async function enviar(){
+  let input = document.getElementById('input');
+  let texto = input.value.trim();
+  if(!texto) return;
+  let chat = document.getElementById('chat');
+  chat.innerHTML += `<div class="msg user">${texto}</div>`;
+  input.value = '';
+  chat.scrollTop = chat.scrollHeight;
 
-    urls = re.findall(r'(https?://\S+)', pregunta)
-    for url in urls[:2]:
-        contenido = leer_link(url)
-        if contenido:
-            contexto += f"\nCONTENIDO REAL DE LA WEB {url}:\n{contenido[:3000]}\n"
+  historial.push({role:"user", content:texto});
 
-    if any(x in lower for x in ["noticia", "latinus", "politica", "morena", "sheinbaum", "amlo"]):
-        contexto += f"\nNOTICIAS LATINUS HOY:\n{get_latinus()}\n"
+  let respDiv = document.createElement('div');
+  respDiv.className = 'msg bot';
+  respDiv.textContent = 'Buscando datos reales...';
+  chat.appendChild(respDiv);
+  chat.scrollTop = chat.scrollHeight;
 
-    if "dolar" in lower or "dólar" in lower or "usd" in lower:
-        try:
-            # API mas exacta y gratis
-            r = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=6).json()
-            mxn = r["rates"]["MXN"]
-            contexto += f"\nDATO REAL Y ACTUAL: Dolar hoy 1 USD = {mxn:.4f} MXN (29 sept 2026)\n"
-        except:
-            try:
-                mxn = requests.get("https://open.er-api.com/v6/latest/USD", timeout=6).json()["rates"]["MXN"]
-                contexto += f"\nDATO REAL: Dolar hoy 1 USD = {mxn:.2f} MXN\n"
-            except: pass
-
-    if "clima" in lower:
-        try:
-            c = requests.get("https://wttr.in/Zihuatanejo?format=%C+%t", timeout=5).text
-            contexto += f"\nDATO REAL: Clima Zihuatanejo/Coyuca ahora: {c}\n"
-        except: pass
-
-    return contexto
-
-@app.route("/")
-def index(): return render_template("index.html")
-@app.route("/manifest.json")
-def manifest(): return send_from_directory(TEMPLATES_DIR, 'manifest.json')
-@app.route("/sw.js")
-def sw(): return send_from_directory(TEMPLATES_DIR, 'sw.js')
-@app.route("/icon-192.png")
-def icon192(): return send_from_directory(TEMPLATES_DIR, 'icon-192.png')
-@app.route("/icon-512.png")
-def icon512(): return send_from_directory(TEMPLATES_DIR, 'icon-512.png')
-
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.get_json()
-    mensaje = data.get("message","")
-    historial = data.get("history",[])
-    extra = inyectar_tiempo_real(mensaje)
-
-    system = f"""Eres IA Maestra, creada por Julio. Tienes acceso a internet real.
-REGLA: Nunca digas que no tienes acceso a tiempo real. Usa los datos inyectados.
-Datos reales de hoy: {extra}
-"""
-
-    msgs = [{"role":"system","content":system}]
-    msgs.extend(historial[-10:])
-    msgs.append({"role":"user","content":mensaje})
-
-    resp = client.chat.completions.create(
-        model=MODELO,
-        messages=msgs,
-        temperature=0.6,
-        max_tokens=800
-    )
-    return jsonify({"reply": limpiar(resp.choices[0].message.content)})
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
+  let res = await fetch('/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:texto, history:historial})});
+  let data = await res.json();
+  respDiv.textContent = data.reply;
+  historial.push({role:"assistant", content:data.reply});
+  chat.scrollTop = chat.scrollHeight;
+}
+</script>
+</body>
+</html>
