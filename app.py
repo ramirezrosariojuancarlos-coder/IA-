@@ -107,7 +107,7 @@ Datos reales inyectados: {extra}
     msgs.extend(historial[-10:])
     msgs.append({"role":"user","content":mensaje})
 
-    resp = client.chat.completions.create(model=MODELO, messages=msgs, temperature=0.5, max_tokens=1000)
+    resp = client.chat.completions.create(model=MODELO, messages=msgs, temperature=0.7, max_tokens=1000)
     return jsonify({"reply": limpiar(resp.choices[0].message.content)})
 
 if __name__ == "__main__":
