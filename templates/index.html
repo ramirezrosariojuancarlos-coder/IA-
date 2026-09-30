@@ -3,67 +3,74 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IA Maestra - J Carlos Double R</title>
+<title>IA Maestra</title>
 <link rel="manifest" href="/manifest.json">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',sans-serif;background:#0f0f0f;color:white;display:flex;flex-direction:column;height:100vh}
-header{background:#1a1a1a;padding:15px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #333}
-.logo{display:flex;align-items:center;gap:10px}
-.logo img{width:35px;height:35px;border-radius:8px;background:white;object-fit:cover}
-.logo h1{font-size:18px}
-#chat{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:15px}
-.msg{max-width:80%;padding:12px 16px;border-radius:15px;line-height:1.4;font-size:15px}
-.user{background:#2d5bff;align-self:flex-end;border-bottom-right-radius:4px}
-.bot{background:#222;align-self:flex-start;border-bottom-left-radius:4px;border:1px solid #333}
-.input-area{display:flex;padding:15px;background:#1a1a1a;border-top:1px solid #333;gap:10px}
-.input-area input{flex:1;padding:12px 15px;border-radius:25px;border:none;background:#2a2a2a;color:white;outline:none}
-.input-area button{padding:12px 20px;border-radius:25px;border:none;background:#2d5bff;color:white;font-weight:bold;cursor:pointer}
-footer{text-align:center;padding:8px;font-size:12px;color:#666}
-footer a{color:#888;text-decoration:none}
+body{font-family:system-ui, sans-serif; background:#e5e7eb; height:100vh; display:flex; flex-direction:column;}
+header{background:#1f2937; color:white; padding:15px 15px; display:flex; align-items:center; justify-content:space-between;}
+header h1{font-size:18px; font-weight:600;}
+.menu-btn{font-size:24px; background:none; border:none; color:white; cursor:pointer;}
+#chat{flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:12px;}
+.msg{max-width:85%; padding:12px 14px; border-radius:18px; font-size:15px; line-height:1.4;}
+.bot{background:white; align-self:flex-start; border-bottom-left-radius:4px; box-shadow:0 1px 2px rgba(0,0,0,0.1);}
+.user{background:#1e3a8a; color:white; align-self:flex-end; border-bottom-right-radius:4px;}
+.input-area{background:white; padding:10px; display:flex; gap:10px; border-top:1px solid #ddd; align-items:center;}
+.input-area input{flex:1; padding:12px 18px; border-radius:25px; border:1px solid #ddd; background:#f3f4f6; outline:none;}
+.input-area button{background:#1e3a8a; color:white; border:none; padding:12px 22px; border-radius:25px; font-weight:600; cursor:pointer;}
+/* Menu lateral */
+#sideMenu{position:fixed; top:0; left:-260px; width:260px; height:100%; background:#111827; color:white; z-index:999; transition:0.3s; padding:20px;}
+#sideMenu.open{left:0;}
+#sideMenu a{color:#d1d5db; text-decoration:none; display:block; padding:12px 0; border-bottom:1px solid #222;}
+#overlay{display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:998;}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">
-    <!-- Si tienes logo.png ponlo en templates y cambia src -->
-    <img src="/icon-192.png" alt="logo">
-    <h1>IA Maestra</h1>
-  </div>
-  <div style="font-size:13px;color:#aaa;">J Carlos Double R</div>
+  <button class="menu-btn" onclick="toggleMenu()">☰</button>
+  <h1>IA Maestra</h1>
+  <button class="menu-btn">⋮</button>
 </header>
 
+<div id="overlay" onclick="toggleMenu()"></div>
+<div id="sideMenu">
+  <h2 style="margin-bottom:20px;">IA Maestra</h2>
+  <a href="#" onclick="abrirAcerca()">📄 Acerca de</a>
+  <a href="#" onclick="toggleMenu()">💬 Nuevo chat</a>
+  <a href="#" style="margin-top:20px; font-size:12px; color:#6b7280;">Creado por J Carlos Double R</a>
+</div>
+
 <div id="chat">
-  <div class="msg bot">Hola, soy IA Maestra. Creada por <b>J Carlos Double R</b>. ¿En qué te ayudo hoy? Puedo leer links, darte el dólar real y noticias de Latinus.</div>
+  <div class="msg bot">Hola, soy IA Maestra. ¿En qué te ayudo?</div>
 </div>
 
 <div class="input-area">
-  <input type="text" id="input" placeholder="Escribe o pega un link..." onkeypress="if(event.key==='Enter') enviar()">
+  <input type="text" id="input" placeholder="Escribe tu pregunta..." onkeypress="if(event.key==='Enter') enviar()">
   <button onclick="enviar()">Enviar</button>
 </div>
 
-<footer>
-  <a href="#" onclick="abrirAcerca()">Acerca de</a> • Creado por J Carlos Double R
-</footer>
-
 <!-- MODAL ACERCA DE -->
-<div id="modalAcerca" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999;">
-  <div style="background:#1e1e1e; max-width:380px; margin:20% auto; padding:30px; border-radius:20px; text-align:center; border:1px solid #333;">
-    <img src="/icon-192.png" style="width:80px;height:80px;border-radius:15px;margin-bottom:15px;background:white;">
-    <h2>IA Maestra</h2>
-    <p style="color:#aaa; margin:10px 0;">v2.0 - Tiempo Real</p>
-    <hr style="border:none; border-top:1px solid #333; margin:15px 0;">
-    <p style="font-size:18px; font-weight:bold;">Creado por<br>J Carlos Double R</p>
-    <p style="font-size:13px; color:#777; margin-top:10px;">Coyuca de Benítez, Gro. México<br>Proyecto Escolar 2026<br>Con acceso a internet real, lector de links y noticias Latinus</p>
-    <button onclick="cerrarAcerca()" style="margin-top:20px; padding:10px 25px; border:none; background:white; color:black; border-radius:10px; font-weight:bold; cursor:pointer;">Cerrar</button>
+<div id="modalAcerca" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; justify-content:center; align-items:center;">
+  <div style="background:white; padding:25px; border-radius:15px; max-width:320px; width:90%; text-align:center;">
+    <h3>IA Maestra</h3>
+    <p style="margin:10px 0; color:#555;">Versión con tiempo real</p>
+    <hr style="margin:12px 0;">
+    <p style="font-weight:bold;">Creado por<br>J Carlos Double R</p>
+    <p style="font-size:12px; color:#888; margin-top:8px;">Coyuca de Benítez, Gro.<br>2026</p>
+    <button onclick="document.getElementById('modalAcerca').style.display='none'" style="margin-top:15px; padding:8px 20px; background:#1f2937; color:white; border:none; border-radius:8px;">Cerrar</button>
   </div>
 </div>
 
 <script>
 let historial = [];
-function abrirAcerca(){ document.getElementById('modalAcerca').style.display='block'; }
-function cerrarAcerca(){ document.getElementById('modalAcerca').style.display='none'; }
-
+function toggleMenu(){
+  document.getElementById('sideMenu').classList.toggle('open');
+  document.getElementById('overlay').style.display = document.getElementById('sideMenu').classList.contains('open') ? 'block' : 'none';
+}
+function abrirAcerca(){
+  toggleMenu();
+  document.getElementById('modalAcerca').style.display='flex';
+}
 async function enviar(){
   let input = document.getElementById('input');
   let texto = input.value.trim();
@@ -72,18 +79,15 @@ async function enviar(){
   chat.innerHTML += `<div class="msg user">${texto}</div>`;
   input.value = '';
   chat.scrollTop = chat.scrollHeight;
-
   historial.push({role:"user", content:texto});
-
-  let respDiv = document.createElement('div');
-  respDiv.className = 'msg bot';
-  respDiv.textContent = 'Buscando datos reales...';
-  chat.appendChild(respDiv);
+  let div = document.createElement('div');
+  div.className='msg bot';
+  div.textContent='Pensando...';
+  chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
-
   let res = await fetch('/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:texto, history:historial})});
   let data = await res.json();
-  respDiv.textContent = data.reply;
+  div.textContent = data.reply;
   historial.push({role:"assistant", content:data.reply});
   chat.scrollTop = chat.scrollHeight;
 }
