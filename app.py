@@ -1,27 +1,25 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
-import os, re, traceback
+import os, re, traceback, requests
 from groq import Groq
 
 app = Flask(__name__, template_folder='templates')
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+groq = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
 
-# MODELOS ACTUALES SEPT 2026 - GROQ APAGÓ LLAMA-4
-MODELO_TEXTO = "llama-3.1-8b-instant" # gratis, rápido
-MODELO_VISION = "meta-llama/llama-4-scout-17b-16e-instruct" # probamos scout primero
-MODELO_VISION_RESPALDO = "qwen/qwen3-32b" # si scout falla, usa qwen
+# MODELOS VIVOS HOY - VERIFICADO 29/SEP/2026
+GROQ_TEXTO = "openai/gpt-oss-20b" # reemplazo oficial de llama-3.1
+GROQ_VISION = "qwen/qwen3.6-27b" # único vision vivo en Groq según docs
+OPENROUTER_VISION = "meta-llama/llama-4-maverick:free" # respaldo gratis
 
-def limpiar(t): return re.sub(r'\*\*(.*?)\*\*', r'\1', t).strip()
-
-def prompt_por_nivel(nivel):
-    prompts = {
-        "primaria": "Explica como para niño de 10 años, con palabras muy fáciles, ejemplos con dibujitos, y muy corto.",
-        "secundaria": "Explica como para secundaria, claro, paso a paso, sin palabras difíciles.",
-        "preparatoria": "Explica como para prepa, con un poco más de análisis y términos técnicos pero claro.",
-        "universidad": "Explica como para universidad, con análisis profundo, fuentes, crítica y estructura formal."
-    }
-    return prompts.get(nivel, prompts["secundaria"])
+def prompt_nivel(nivel):
+    return {
+        "primaria": "Eres para PRIMARIA: palabras de niño 10 años, muy corto, con emojis, ejemplo super simple.",
+        "secundaria": "Eres para SECUNDARIA: claro, paso a paso, sin tecnicismos.",
+        "prepa": "Eres para PREPA: explica con análisis, causas, analogía y ejemplo de preparatoria.",
+        "universidad": "Eres para UNIVERSIDAD: análisis profundo, formal, con argumentos, referencias y conclusión crítica."
+    }.get(nivel, "secundaria")
 
 @app.route("/")
 def index(): return render_template("index.html")
@@ -37,37 +35,42 @@ def icon512(): return send_from_directory(TEMPLATES_DIR, 'icon-512.png')
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
-        data = request.get_json(force=True)
-        mensaje = data.get("message","")
-        historial = data.get("history",[])
-        imagen = data.get("image")
-        nivel = data.get("nivel","secundaria")
+        d = request.get_json(force=True)
+        msg = d.get("message","")
+        hist = d.get("history",[])[-4:]
+        img = d.get("image")
+        nivel = d.get("nivel","secundaria")
 
-        estilo = prompt_por_nivel(nivel)
-        system = f"Eres IA Maestra creada por J Carlos Double R. Nivel actual: {nivel}. {estilo} Si hay imagen, léela completa."
+        system = f"Eres IA Maestra de J Carlos Double R. Nivel: {nivel.upper()}. {prompt_nivel(nivel)} Si hay imagen, transcribe TODO lo que dice y luego resuelve según el nivel."
 
-        msgs = [{"role":"system","content":system}]
-        for m in historial[-4:]:
-            if isinstance(m, dict): msgs.append(m)
+        messages = [{"role":"system","content":system}] + hist
 
-        if imagen:
-            msgs.append({"role":"user","content":[
-                {"type":"text","text": mensaje},
-                {"type":"image_url","image_url":{"url": imagen}}
+        if img:
+            messages.append({"role":"user","content":[
+                {"type":"text","text": msg or "Lee la imagen y resuelve según el nivel"},
+                {"type":"image_url","image_url":{"url": img}}
             ]})
-            modelo = MODELO_VISION
+            # 1. Intenta Groq vision vivo
+            try:
+                r = groq.chat.completions.create(model=GROQ_VISION, messages=messages, max_tokens=700, temperature=0.4)
+                return jsonify({"reply": re.sub(r'\*\*','', r.choices[0].message.content)})
+            except Exception as e:
+                print("Groq vision falló:", e)
+                if not OPENROUTER_KEY:
+                    return jsonify({"reply": f"Groq vision en preview limitado. Pon OPENROUTER_API_KEY para respaldo. Error: {e}"})
+
+            # 2. Fallback OpenRouter free vision
+            ro = requests.post("https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type":"application/json"},
+                json={"model": OPENROUTER_VISION, "messages": messages, "max_tokens":700}, timeout=40)
+            ro.raise_for_status()
+            txt = ro.json()["choices"][0]["message"]["content"]
+            return jsonify({"reply": re.sub(r'\*\*','', txt)})
         else:
-            msgs.append({"role":"user","content": mensaje})
-            modelo = MODELO_TEXTO
+            messages.append({"role":"user","content": msg})
+            r = groq.chat.completions.create(model=GROQ_TEXTO, messages=messages, max_tokens=700, temperature=0.4)
+            return jsonify({"reply": re.sub(r'\*\*','', r.choices[0].message.content)})
 
-        try:
-            resp = client.chat.completions.create(model=modelo, messages=msgs, temperature=0.4, max_tokens=600)
-        except Exception as e:
-            # Si scout no existe en tu cuenta, usa qwen automáticamente
-            print(f"Modelo {modelo} falló, probando respaldo: {e}")
-            resp = client.chat.completions.create(model=MODELO_VISION_RESPALDO, messages=msgs, temperature=0.4, max_tokens=600)
-
-        return jsonify({"reply": limpiar(resp.choices[0].message.content)})
     except Exception as e:
         traceback.print_exc()
         return jsonify({"reply": f"Error: {e}"}), 200
