@@ -1,47 +1,18 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
-import os, re, requests
+import os, re, traceback
 from groq import Groq
-import xml.etree.ElementTree as ET
 
 app = Flask(__name__, template_folder='templates')
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-MODELO_TEXTO = "openai/gpt-oss-20b"
-MODELO_VISION = "llama-3.2-11b-vision-preview" # MUCHO MAS RAPIDO
+
+MODELO_TEXTO = "llama-3.3-70b-versatile"
+MODELO_VISION = "meta-llama/llama-4-maverick-17b-128e-instruct"
 
 def limpiar(t):
-    t = re.sub(r'\*\*(.*?)\*\*', r'\1', t)
-    t = re.sub(r'#{1,6}\s?', '', t)
-    return t.strip()
-
-def leer_link(url):
-    try:
-        r = requests.get(f"https://cc.jina.ai/{url}", timeout=6, headers={"User-Agent":"Mozilla/5.0"})
-        return r.text[:2000]
-    except: return ""
-
-def get_latinus():
-    try:
-        r = requests.get("https://latinus.us/feed/", timeout=5, headers={"User-Agent":"Mozilla/5.0"})
-        root = ET.fromstring(r.content)
-        out=[]
-        for item in root.findall(".//item")[:3]:
-            out.append(f"- {item.find('title').text}")
-        return "\n".join(out)
-    except: return ""
-
-def inyectar_tiempo_real(pregunta):
-    lower = pregunta.lower()
-    ctx=""
-    if any(x in lower for x in ["noticia","latinus"]):
-        ctx+=f"\nLATINUS: {get_latinus()}\n"
-    if "dolar" in lower or "usd" in lower:
-        try:
-            r=requests.get("https://api.exchangerate-api.com/v4/latest/USD",timeout=4).json()
-            ctx+=f"\nDolar {r['rates']['MXN']:.2f} MXN\n"
-        except: pass
-    return ctx
+    return re.sub(r'\*\*(.*?)\*\*', r'\1', t).strip()
 
 @app.route("/")
 def index(): return render_template("index.html")
@@ -56,27 +27,50 @@ def icon512(): return send_from_directory(TEMPLATES_DIR, 'icon-512.png')
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    data = request.get_json()
-    mensaje = data.get("message","")
-    historial = data.get("history",[])
-    imagen = data.get("image", None)
-    extra = inyectar_tiempo_real(mensaje)
-    system = f"Eres IA Maestra, creada por J Carlos Double R. Responde corto, claro, para secundaria. Datos: {extra}"
+    try:
+        data = request.get_json(force=True)
+        mensaje = data.get("message","").strip()
+        historial = data.get("history",[])
+        imagen = data.get("image")
 
-    msgs = [{"role":"system","content":system}]
-    msgs.extend(historial[-6:])
+        # Si no hay mensaje ni imagen
+        if not mensaje and not imagen:
+            return jsonify({"reply": "Mándame la foto y escribe que quieres que haga."})
 
-    if imagen:
-        msgs.append({"role":"user","content":[{"type":"text","text": mensaje},{"type":"image_url","image_url":{"url": imagen}}]})
-        modelo = MODELO_VISION
-        max_t = 400
-    else:
-        msgs.append({"role":"user","content": mensaje})
-        modelo = MODELO_TEXTO
-        max_t = 600
+        system = "Eres IA Maestra, creada por J Carlos Double R. Si te mandan imagen, analízala y responde corto, claro, para secundaria."
 
-    resp = client.chat.completions.create(model=modelo, messages=msgs, temperature=0.5, max_tokens=max_t)
-    return jsonify({"reply": limpiar(resp.choices[0].message.content)})
+        msgs = [{"role":"system","content":system}]
+        # solo últimos 4 para que sea rápido
+        for m in historial[-4:]:
+            if isinstance(m, dict) and "role" in m and "content" in m:
+                msgs.append(m)
+
+        if imagen:
+            # Groq necesita formato vision exacto
+            msgs.append({
+                "role":"user",
+                "content": [
+                    {"type":"text","text": mensaje if mensaje else "Lee esta imagen, transcribe el texto y resuelve la tarea. Responde corto para secundaria."},
+                    {"type":"image_url","image_url":{"url": imagen}}
+                ]
+            })
+            modelo = MODELO_VISION
+        else:
+            msgs.append({"role":"user","content": mensaje})
+            modelo = MODELO_TEXTO
+
+        resp = client.chat.completions.create(
+            model=modelo,
+            messages=msgs,
+            temperature=0.4,
+            max_tokens=500
+        )
+        return jsonify({"reply": limpiar(resp.choices[0].message.content)})
+
+    except Exception as e:
+        print("ERROR REAL:", str(e))
+        traceback.print_exc()
+        return jsonify({"reply": f"Error del servidor: {e}. Revisa tu GROQ_API_KEY en Render > Environment"}), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
