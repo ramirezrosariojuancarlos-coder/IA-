@@ -3,88 +3,52 @@ import os, re, requests
 from groq import Groq
 import xml.etree.ElementTree as ET
 
-# --- Iconos ---
-try:
-    from PIL import Image, ImageDraw
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
-    os.makedirs(TEMPLATES_DIR, exist_ok=True)
-    for size in [192, 512]:
-        path = os.path.join(TEMPLATES_DIR, f'icon-{size}.png')
-        if not os.path.exists(path):
-            img = Image.new('RGB', (size, size), '#0f3460')
-            d = ImageDraw.Draw(img)
-            d.ellipse([size*0.2, size*0.2, size*0.8, size*0.8], fill='white')
-            img.save(path)
-except: pass
-
 app = Flask(__name__, template_folder='templates')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-TAVILY_KEY = os.environ.get("TAVILY_API_KEY", "") # Ponla en Render si la sacas
 MODELO = "openai/gpt-oss-20b"
 
 def limpiar(texto):
     texto = re.sub(r'\*\*(.*?)\*\*', r'\1', texto)
     texto = re.sub(r'#{1,6}\s?', '', texto)
     texto = re.sub(r'\|', ' ', texto)
-    texto = re.sub(r'---', '', texto)
     return texto.strip()
 
-def buscar_latinus(pregunta):
-    # Si pregunta por noticias, politica, amlo, sheinbaum, latinus
-    gatillos_noticia = ["noticia", "latinus", "politica", "gobierno", "morena", "amlo", "sheinbaum", "loret"]
-    if not any(p in pregunta.lower() for p in gatillos_noticia):
-        return ""
+def buscar_latinus():
     try:
-        # RSS de Latinus
         r = requests.get("https://latinus.us/feed/", timeout=8, headers={"User-Agent":"Mozilla/5.0"})
         root = ET.fromstring(r.content)
         noticias = []
-        for item in root.findall(".//item")[:3]: # 3 ultimas
+        for item in root.findall(".//item")[:3]:
             titulo = item.find("title").text if item.find("title") is not None else ""
             desc = item.find("description").text if item.find("description") is not None else ""
-            # Limpia html
-            desc = re.sub(r'<[^>]+>', '', desc)[:300]
+            desc = re.sub(r'<[^>]+>', '', desc)[:250]
             noticias.append(f"- {titulo}: {desc}")
-        if noticias:
-            return "\nNOTICIAS RECIENTES DE LATINUS (úsalas, cita a Latinus):\n" + "\n".join(noticias) + "\n"
-    except Exception as e:
-        print("Error Latinus:", e)
-    return ""
+        return "\n".join(noticias)
+    except:
+        return ""
 
 def buscar_internet(pregunta):
     contexto = ""
+    lower = pregunta.lower()
 
-    # 1. Latinus primero
-    contexto += buscar_latinus(pregunta)
+    # Si pregunta de noticias/politica
+    if any(p in lower for p in ["noticia", "latinus", "politica", "amlo", "sheinbaum", "loret", "morena", "gobierno", "hoy"]):
+        lat = buscar_latinus()
+        if lat:
+            contexto += f"\nULTIMAS NOTICIAS DE LATINUS:\n{lat}\n"
 
-    # 2. Busqueda general
-    gatillos = ["hoy", "actual", "precio", "clima", "quien gano", "cuando", "2025", "2026", "dolar", "presidente", "que paso"]
-    if any(p in pregunta.lower() for p in gatillos) or contexto!= "":
+    # Busqueda general gratis
+    if any(p in lower for p in ["hoy", "actual", "precio", "clima", "dolar", "cuando", "2026", "que paso"]):
+        try:
+            r = requests.get(f"https://api.duckduckgo.com/?q={pregunta}&format=json&no_html=1&skip_disambig=1", timeout=5)
+            resumen = r.json().get("AbstractText")
+            if resumen:
+                contexto += f"\nDATO ACTUAL DE INTERNET: {resumen}\n"
+        except: pass
 
-        # Si tienes TAVILY_API_KEY es 10x mejor
-        if TAVILY_KEY:
-            try:
-                r = requests.post("https://api.tavily.com/search",
-                    json={"query": pregunta, "max_results": 3, "include_answer": True, "api_key": TAVILY_KEY}, timeout=10)
-                data = r.json()
-                if data.get("answer"):
-                    contexto += f"\nINFO ACTUALIZADA DE INTERNET: {data['answer']}\n"
-                for res in data.get("results", [])[:2]:
-                    contexto += f"\nFuente: {res.get('content','')[:400]}\n"
-            except: pass
-        else:
-            # Fallback gratis DuckDuckGo
-            try:
-                r = requests.get(f"https://api.duckduckgo.com/?q={pregunta}&format=json&no_html=1", timeout=5)
-                data = r.json()
-                resumen = data.get("AbstractText")
-                if resumen:
-                    contexto += f"\nINFO ACTUAL DE INTERNET: {resumen}\n"
-            except: pass
     return contexto
 
 @app.route("/")
@@ -103,15 +67,16 @@ def chat():
     data = request.get_json()
     mensaje = data.get("message", "")
     historial = data.get("history", [])
-    contexto_actual = buscar_internet(mensaje)
 
-    mensajes_ia = [
-        {"role": "system", "content": f"Eres IA Maestra, creada por Julio en Guerrero. Tienes memoria. Hablas español natural. Si te dan contexto, úsalo y di que es información actualizada. Si es de Latinus, di 'Según Latinus...'. Nunca uses ** ni #. {contexto_actual}"}
-    ]
-    mensajes_ia.extend(historial[-10:])
-    mensajes_ia.append({"role": "user", "content": mensaje})
+    extra = buscar_internet(mensaje)
 
-    resp = client.chat.completions.create(model=MODELO, messages=mensajes_ia, temperature=0.6, max_tokens=700)
+    prompt = f"Eres IA Maestra creada por Julio. Tienes memoria. Si te dan noticias de Latinus di 'Según Latinus...'. Si te dan dato actual, dilo como info actualizada. Responde natural, sin **. {extra}"
+
+    msgs = [{"role":"system","content":prompt}]
+    msgs.extend(historial[-10:])
+    msgs.append({"role":"user","content":mensaje})
+
+    resp = client.chat.completions.create(model=MODELO, messages=msgs, temperature=0.6, max_tokens=700)
     return jsonify({"reply": limpiar(resp.choices[0].message.content)})
 
 if __name__ == "__main__":
