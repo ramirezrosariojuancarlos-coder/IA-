@@ -1,62 +1,83 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>IA de J Carlos - WhatsApp</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IA Maestra</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{height:100vh;display:flex;flex-direction:column;font-family:'Segoe UI',Helvetica,Arial,sans-serif;background:#111b21}
-#header{height:59px;background:#202c33;display:flex;align-items:center;padding:0 16px;gap:12px;color:#fff;z-index:10}
-#header img{width:40px;height:40px;border-radius:50%;background:#00a884;display:flex;align-items:center;justify-content:center}
-#header b{font-size:16px} #header span{font-size:13px;color:#8696a0;display:block}
-#chat{flex:1;background:#0b141a;background-image:url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");background-blend-mode:overlay;background-color:#e5ddd5;overflow-y:auto;padding:12px 8px 20px 8px;display:flex;flex-direction:column;gap:2px}
-.msg{max-width:78%;padding:6px 7px 20px 9px;border-radius:7.5px;font-size:14.2px;line-height:19.2px;position:relative;box-shadow:0 1px 0.5px rgba(0,0,0,0.13);word-wrap:break-word;white-space:pre-wrap}
-.user{background:#d9fdd3;align-self:flex-end;border-top-right-radius:0;margin-left:auto;color:#111b21}
-.bot{background:#fff;align-self:flex-start;border-top-left-radius:0;margin-right:auto;color:#111b21}
-.time{position:absolute;bottom:3px;right:6px;font-size:11px;color:#667781;display:flex;gap:3px;align-items:center}
-.user .time{color:#53bdeb}
-#inputArea{height:62px;background:#202c33;display:flex;align-items:center;padding:5px 10px;gap:8px}
-#inputArea input{flex:1;height:42px;border-radius:21px;border:none;padding:0 18px;font-size:15px;outline:none;background:#2a3942;color:#fff}
-#inputArea input::placeholder{color:#8696a0}
-#send{width:45px;height:45px;background:#00a884;border:none;border-radius:50%;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-#send:active{transform:scale(0.92)}
+body{font-family:'Segoe UI', Helvetica, Arial, sans-serif;background:#f0f2f5;height:100vh;display:flex;flex-direction:column}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 15px;background:#1a1a2e;color:white}
+#menu-btn,#dots-btn{font-size:26px;background:none;border:none;color:white;cursor:pointer}
+.side-menu{position:fixed;top:0;left:-280px;width:260px;height:100%;background:#16213e;padding-top:70px;transition:.3s;z-index:1001;display:flex;flex-direction:column}
+.side-menu.open{left:0}.side-menu a{display:flex;gap:14px;padding:16px 20px;color:#ddd;text-decoration:none;border-bottom:1px solid #2a2a4a}
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000}#overlay.show{display:block}
+#chat-container{flex:1;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:85%;padding:10px 14px;border-radius:15px;line-height:1.4;font-size:14.2px;font-family:'Segoe UI', Helvetica, Arial, sans-serif;word-wrap:break-word}
+.user{align-self:flex-end;background:#0f3460;color:white;border-bottom-right-radius:3px}
+.bot{align-self:flex-start;background:white;color:#333;border-bottom-left-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.msg img{max-width:100%;border-radius:10px;margin-top:8px}
+#input-area{display:flex;padding:10px;background:white;border-top:1px solid #ddd;gap:8px;align-items:center}
+#user-input{flex:1;padding:12px;border:1px solid #ddd;border-radius:25px;outline:none;font-family:'Segoe UI', Helvetica, Arial, sans-serif;font-size:14.2px}
+#send-btn{padding:0 20px;height:42px;border:none;background:#0f3460;color:white;border-radius:25px}
+#cam-btn{background:none;border:none;font-size:24px;cursor:pointer}
+#preview{display:none;padding:8px;background:white;border-top:1px solid #eee;gap:10px;align-items:center}
+#preview img{max-height:100px;border-radius:8px}
+.nivel-bar{display:flex;gap:6px;padding:8px 12px;background:white;border-bottom:1px solid #ddd;overflow-x:auto}
+.nivel-btn{padding:6px 12px;border-radius:20px;border:1px solid #0f3460;background:white;font-size:12px;cursor:pointer;white-space:nowrap;font-family:'Segoe UI', Helvetica, Arial, sans-serif}
+.nivel-btn.active{background:#0f3460;color:white}
 </style>
 </head>
 <body>
-<div id="header">
-<div style="width:40px;height:40px;border-radius:50%;background:#00a884;display:flex;align-items:center;justify-content:center;font-size:22px">🤖</div>
-<div><b>IA de J Carlos</b><span>en línea</span></div>
+<div class="topbar"><button id="menu-btn">☰</button><h1>IA Maestra</h1><button id="dots-btn">⋮</button></div>
+<div class="nivel-bar">
+  <button class="nivel-btn active" data-nivel="primaria">Primaria</button>
+  <button class="nivel-btn" data-nivel="secundaria">Secundaria</button>
+  <button class="nivel-btn" data-nivel="preparatoria">Prepa</button>
+  <button class="nivel-btn" data-nivel="universidad">Universidad</button>
 </div>
-
-<div id="chat">
-<div class="msg bot">Hola J Carlos 👋 Soy tu IA. ¿En qué te ayudo hoy?<span class="time">10:24 ✓✓</span></div>
+<div id="side-menu" class="side-menu">
+<a href="#" onclick="location.reload()"><span class="material-icons">home</span>Inicio</a>
+<a href="#" onclick="clearChat(); closeMenu();"><span class="material-icons">history</span>Borrar Historial</a>
+<a href="#" onclick="showAcerca()"><span class="material-icons">info</span>Acerca de</a>
 </div>
-
-<div id="inputArea">
-<input id="text" placeholder="Escribe un mensaje" autocomplete="off">
-<button id="send">➤</button>
+<div id="overlay" onclick="closeMenu()"></div>
+<div id="chat-container"></div>
+<div id="preview"><img id="preview-img"><button onclick="quitarImagen()" style="padding:5px 10px;background:#ff4444;color:white;border:none;border-radius:6px;">X</button></div>
+<div id="input-area">
+<input type="file" id="file-input" accept="image/*" style="display:none">
+<button id="cam-btn" onclick="fileInput.click()">📷</button>
+<input id="user-input" placeholder="Escribe o envía imagen..."><button id="send-btn">Enviar</button>
 </div>
-
 <script>
-const chat=document.getElementById('chat'),input=document.getElementById('text'),btn=document.getElementById('send');
-function addMsg(t,type){
-let d=document.createElement('div');d.className='msg '+type;
-let hora=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-d.innerHTML=t+'<span class="time">'+hora+(type=='user'?' ✓✓':'')+'</span>';
-chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
+const sideMenu=document.getElementById('side-menu'), overlay=document.getElementById('overlay'), chatContainer=document.getElementById('chat-container'), userInput=document.getElementById('user-input'), sendBtn=document.getElementById('send-btn'), fileInput=document.getElementById('file-input');
+let historial=JSON.parse(localStorage.getItem("memoria_ia")||"[]"); let imagenBase64=null;
+let nivelActual=localStorage.getItem("nivel_ia")||"secundaria";
+function setNivel(n){nivelActual=n; localStorage.setItem("nivel_ia",n); document.querySelectorAll('.nivel-btn').forEach(b=>{b.classList.toggle('active', b.dataset.nivel===n)});}
+setNivel(nivelActual);
+document.querySelectorAll('.nivel-btn').forEach(b=> b.onclick=()=> setNivel(b.dataset.nivel));
+function pintarChat(){chatContainer.innerHTML=""; if(!historial.length){chatContainer.innerHTML=`<div class="msg bot">¡Hola! Soy IA Maestra v3. Nivel actual: <b>${nivelActual}</b> 📷 Mándame tu tarea en foto.</div>`} else {historial.forEach(m=>{const d=document.createElement("div"); d.className="msg "+(m.role==="user"?"user":"bot"); d.textContent=m.content; chatContainer.appendChild(d);})} chatContainer.scrollTop=chatContainer.scrollHeight} pintarChat();
+fileInput.onchange=(e)=>{const file=e.target.files[0]; if(!file) return; const img=new Image(); img.onload=()=>{const c=document.createElement('canvas'); const MAX=800; let w=img.width,h=img.height; if(w>h){if(w>MAX){h*=MAX/w; w=MAX}} else {if(h>MAX){w*=MAX/h; h=MAX}} c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h); imagenBase64=c.toDataURL('image/jpeg',0.7); document.getElementById('preview-img').src=imagenBase64; document.getElementById('preview').style.display='flex';}; img.src=URL.createObjectURL(file);};
+function quitarImagen(){imagenBase64=null; document.getElementById('preview').style.display='none'; fileInput.value='';}
+document.getElementById('menu-btn').onclick=()=>{sideMenu.classList.add('open'); overlay.classList.add('show');}
+function closeMenu(){sideMenu.classList.remove('open'); overlay.classList.remove('show');}
+function clearChat(){if(confirm("¿Borrar?")){historial=[]; localStorage.removeItem("memoria_ia"); pintarChat();}}
+function showAcerca(){closeMenu(); const d=document.createElement("div"); d.className="msg bot"; d.innerHTML=`<b>IA Maestra v3 - Niveles</b><br>Creado por <b>J Carlos Double R</b><br>Coyuca, Gro. 2026<br>Nivel: ${nivelActual}`; chatContainer.appendChild(d);}
+async function sendMessage(){
+ const text=userInput.value.trim(); if(!text &&!imagenBase64) return;
+ let html=text; if(imagenBase64) html+=`<br><img src="${imagenBase64}">`;
+ const du=document.createElement("div"); du.className="msg user"; du.innerHTML=html||"📷"; chatContainer.appendChild(du);
+ const msgB=text||"Lee la imagen y resuelve."; const imgB=imagenBase64;
+ userInput.value=''; quitarImagen(); chatContainer.scrollTop=chatContainer.scrollHeight;
+ const typing=document.createElement('div'); typing.className='msg bot'; typing.textContent='Analizando en '+nivelActual+'...'; chatContainer.appendChild(typing);
+ try{
+  const res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msgB,history:historial.slice(-4),image:imgB,nivel:nivelActual})});
+  const data=await res.json(); typing.textContent=data.reply;
+  historial.push({role:"user",content:msgB+(imgB?" [img]":"")}); historial.push({role:"assistant",content:data.reply});
+  if(historial.length>20) historial=historial.slice(-20); localStorage.setItem("memoria_ia",JSON.stringify(historial));
+ }catch{ typing.textContent='Error conexión';} chatContainer.scrollTop=chatContainer.scrollHeight;
 }
-async function send(){
-let q=input.value.trim();if(!q)return;addMsg(q,'user');input.value='';
-try{
-let r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q})});
-let data=await r.json();addMsg(data.reply||data.message||'Error en IA','bot');
-}catch{
-// MODO DEMO si no hay backend - responde local
-setTimeout(()=>{addMsg('Recibí: "'+q+'" - Aquí va la respuesta de tu IA real cuando conectes el backend.','bot')},600);
-}
-}
-btn.onclick=send;input.addEventListener('keydown',e=>{if(e.key==='Enter')send()});
+sendBtn.onclick=sendMessage; userInput.addEventListener('keypress',e=>{if(e.key==='Enter') sendMessage();});
 </script>
 </body>
-</html>
+                                                </html>
