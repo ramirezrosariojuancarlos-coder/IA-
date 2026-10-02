@@ -4,19 +4,29 @@ from groq import Groq
 
 app = Flask(__name__, template_folder='templates')
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-# MODELOS VIVOS VERIFICADOS 29/SEP/2026
-TEXTO = "openai/gpt-oss-20b"
-VISION = "qwen/qwen3.8-27b"
+MODELO_TEXTO = "llama-3.1-8b-instant"
+MODELO_VISION = "meta-llama/llama-4-scout-17b-16e-instruct"
+MODELO_RESPALDO = "qwen/qwen3-32b"
 
-def prompt_nivel(n):
-    return {
-        "primaria": "PRIMARIA: como niño de 10 años, muy corto, emojis.",
-        "secundaria": "SECUNDARIA: claro y paso a paso como alumno de secundaria.",
-        "prepa": "PREPA: con análisis y ejemplo.",
-        "universidad": "UNIVERSIDAD: profundo y formal."
-    }.get(n.lower(), "SECUNDARIA")
+def limpiar(t):
+    t = re.sub(r'\*\*(.*?)\*\*', r'\1', t)
+    t = re.sub(r'##+\s*', '', t)
+    t = re.sub(r'\|\s*\|+', '', t)
+    t = re.sub(r'---.*', '', t)
+    return t.strip()
+
+def prompt_por_nivel(nivel):
+    base = "Responde CORTO y directo. Máximo 3 frases para preguntas simples. No des biblia si no te la piden. Si es tarea, da pasos cortos. Usa letra estilo WhatsApp, sin negritas excesivas ni tablas. Habla como amigo, no como libro."
+    extras = {
+        "primaria": " Nivel primaria: palabras muy fáciles, ejemplo corto, max 4 lineas.",
+        "secundaria": " Nivel secundaria: claro y rápido, max 5 lineas.",
+        "preparatoria": " Nivel prepa: un poco más de detalle pero sigue corto.",
+        "universidad": " Nivel universidad: puedes ser un poco más profundo pero SIGUE SIENDO CORTO. Solo si te piden 'explícame a fondo' te extiendes."
+    }
+    return base + extras.get(nivel, extras["secundaria"])
 
 @app.route("/")
 def index(): return render_template("index.html")
@@ -32,29 +42,36 @@ def icon512(): return send_from_directory(TEMPLATES_DIR, 'icon-512.png')
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
-        d = request.get_json(force=True)
-        msg = d.get("message","")
-        hist = d.get("history",[])[-4:]
-        img = d.get("image")
-        nivel = d.get("nivel","secundaria")
+        data = request.get_json(force=True)
+        mensaje = data.get("message","")
+        historial = data.get("history",[])
+        imagen = data.get("image")
+        nivel = data.get("nivel","secundaria")
 
-        system = f"Eres IA Maestra de J Carlos. Nivel {nivel}: {prompt_nivel(nivel)} Si hay imagen, transcríbela completa."
-        messages = [{"role":"system","content":system}] + [m for m in hist if isinstance(m, dict)]
+        estilo = prompt_por_nivel(nivel)
+        system = f"Eres IA Maestra creada por J Carlos Double R. {estilo}"
 
-        modelo = VISION if img else TEXTO
+        msgs = [{"role":"system","content":system}]
+        for m in historial[-4:]:
+            if isinstance(m, dict): msgs.append(m)
 
-        if img:
-            messages.append({"role":"user","content":[
-                {"type":"text","text": msg or f"Lee la imagen nivel {nivel}"},
-                {"type":"image_url","image_url":{"url": img}}
+        if imagen:
+            msgs.append({"role":"user","content":[
+                {"type":"text","text": mensaje + " (Responde corto)"},
+                {"type":"image_url","image_url":{"url": imagen}}
             ]})
+            modelo = MODELO_VISION
         else:
-            messages.append({"role":"user","content": msg})
+            msgs.append({"role":"user","content": mensaje + " Responde corto."})
+            modelo = MODELO_TEXTO
 
-        r = client.chat.completions.create(model=modelo, messages=messages, max_tokens=800, temperature=0.4)
-        txt = re.sub(r'\*\*','', r.choices[0].message.content)
-        return jsonify({"reply": txt})
+        try:
+            resp = client.chat.completions.create(model=modelo, messages=msgs, temperature=0.5, max_tokens=300)
+        except Exception as e:
+            print(f"Fallo {modelo}: {e}")
+            resp = client.chat.completions.create(model=MODELO_RESPALDO, messages=msgs, temperature=0.5, max_tokens=300)
 
+        return jsonify({"reply": limpiar(resp.choices[0].message.content)})
     except Exception as e:
         traceback.print_exc()
         return jsonify({"reply": f"Error: {e}"}), 200
