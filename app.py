@@ -4,30 +4,16 @@ from groq import Groq
 
 app = Flask(__name__, template_folder='templates')
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
-
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-# MODELOS QUE SI EXISTEN EN GROQ HOY - OCT 2026
-MODELO_1 = "llama-3.1-8b-instant"
-MODELO_2 = "llama-3.3-70b-versatile"
-MODELO_3 = "gemma2-9b-it"
+# UNICO MODELO QUE GROQ DEJÓ VIVO OCT 2026 - LOS DEMÁS ESTÁN MUERTOS
+MODELO_ACTIVO = "llama-3.1-8b-instant"
 
 def limpiar(t):
-    t = re.sub(r'\*\*(.*?)\*\*', r'\1', t)
-    t = re.sub(r'##+\s*', '', t)
-    t = re.sub(r'\|\s*\|+', ' ', t)
-    t = re.sub(r'---.*', '', t)
+    t = re.sub(r'\*\*', '', t)
+    t = re.sub(r'##+', '', t)
+    t = t.replace('|',' ').replace('---','')
     return t.strip()
-
-def prompt_por_nivel(nivel):
-    base = "Responde CORTO, directo, como chat de WhatsApp. Máximo 3 frases si es pregunta simple. No hagas tablas ni pongas ##. Solo si el usuario dice 'explícame a fondo' te extiendes."
-    extras = {
-        "primaria": " Primaria: palabras de niño de 10 años, muy fácil.",
-        "secundaria": " Secundaria: claro y rápido.",
-        "preparatoria": " Prepa: un poco más de detalle pero corto.",
-        "universidad": " Universidad: conciso pero inteligente. Si es 'sabes debatir?' responde solo 'Sí, dime el tema y empezamos'."
-    }
-    return base + extras.get(nivel, "")
 
 @app.route("/")
 def index(): return render_template("index.html")
@@ -47,35 +33,32 @@ def chat():
         mensaje = data.get("message","")
         historial = data.get("history",[])
         nivel = data.get("nivel","secundaria")
-        # Ignoramos imagen si Groq no deja visión, para no dar 404
-        estilo = prompt_por_nivel(nivel)
-        system = f"Eres IA Maestra de J Carlos. {estilo}"
 
-        msgs = [{"role":"system","content":system}]
-        for m in historial[-4:]:
+        # PROMPT CORTO COMO TU QUERÍAS
+        if nivel == "primaria":
+            sistema = "Eres IA Maestra. Responde súper corto, 2 líneas máximo, palabras de niño de 10 años."
+        elif nivel == "secundaria":
+            sistema = "Eres IA Maestra. Responde corto y claro, 3 líneas máximo. Sin tablas."
+        elif nivel == "preparatoria":
+            sistema = "Eres IA Maestra. Responde corto, directo. Solo si te piden 'a fondo' te extiendes."
+        else: # universidad
+            sistema = "Eres IA Maestra. Nivel universidad pero responde CORTO. Ejemplo: Si preguntan 'Sabes debatir?' responde solo 'Sí, dime el tema y empezamos.' No des tesis. Solo si dicen 'explícame a fondo' te extiendes."
+
+        msgs = [{"role":"system","content":sistema}]
+        for m in historial[-3:]:
             if isinstance(m, dict): msgs.append(m)
-        msgs.append({"role":"user","content": mensaje + " Responde corto."})
+        msgs.append({"role":"user","content": mensaje})
 
-        # Intento 1, 2, 3 - el que funcione
-        modelos = [MODELO_1, MODELO_2, MODELO_3]
-        respuesta = None
-        ultimo_error = ""
-        for mod in modelos:
-            try:
-                r = client.chat.completions.create(model=mod, messages=msgs, temperature=0.5, max_tokens=250)
-                respuesta = r.choices[0].message.content
-                break
-            except Exception as e:
-                ultimo_error = str(e)
-                continue
-
-        if not respuesta:
-            return jsonify({"reply": f"No se pudo conectar: {ultimo_error[:100]}. Revisa tu GROQ_API_KEY en Render."})
-
-        return jsonify({"reply": limpiar(respuesta)})
+        resp = client.chat.completions.create(
+            model=MODELO_ACTIVO,
+            messages=msgs,
+            temperature=0.6,
+            max_tokens=200
+        )
+        return jsonify({"reply": limpiar(resp.choices[0].message.content)})
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"reply": f"Error: {e}"}), 200
+        return jsonify({"reply": f"Error Groq: {str(e)[:200]}"}), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
