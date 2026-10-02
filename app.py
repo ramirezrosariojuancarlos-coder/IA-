@@ -6,14 +6,17 @@ app = Flask(__name__, template_folder='templates')
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-# UNICO MODELO QUE GROQ DEJÓ VIVO OCT 2026 - LOS DEMÁS ESTÁN MUERTOS
-MODELO_ACTIVO = "llama-3.1-8b-instant"
+# MODELOS VIVOS VERIFICADOS 29/SEP/2026
+TEXTO = "openai/gpt-oss-20b"
+VISION = "qwen/qwen3.8-27b"
 
-def limpiar(t):
-    t = re.sub(r'\*\*', '', t)
-    t = re.sub(r'##+', '', t)
-    t = t.replace('|',' ').replace('---','')
-    return t.strip()
+def prompt_nivel(n):
+    return {
+        "primaria": "PRIMARIA: como niño de 10 años, muy corto, emojis.",
+        "secundaria": "SECUNDARIA: claro y paso a paso como alumno de secundaria.",
+        "prepa": "PREPA: con análisis y ejemplo.",
+        "universidad": "UNIVERSIDAD: profundo y formal."
+    }.get(n.lower(), "SECUNDARIA")
 
 @app.route("/")
 def index(): return render_template("index.html")
@@ -29,36 +32,32 @@ def icon512(): return send_from_directory(TEMPLATES_DIR, 'icon-512.png')
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
-        data = request.get_json(force=True)
-        mensaje = data.get("message","")
-        historial = data.get("history",[])
-        nivel = data.get("nivel","secundaria")
+        d = request.get_json(force=True)
+        msg = d.get("message","")
+        hist = d.get("history",[])[-4:]
+        img = d.get("image")
+        nivel = d.get("nivel","secundaria")
 
-        # PROMPT CORTO COMO TU QUERÍAS
-        if nivel == "primaria":
-            sistema = "Eres IA Maestra. Responde súper corto, 2 líneas máximo, palabras de niño de 10 años."
-        elif nivel == "secundaria":
-            sistema = "Eres IA Maestra. Responde corto y claro, 3 líneas máximo. Sin tablas."
-        elif nivel == "preparatoria":
-            sistema = "Eres IA Maestra. Responde corto, directo. Solo si te piden 'a fondo' te extiendes."
-        else: # universidad
-            sistema = "Eres IA Maestra. Nivel universidad pero responde CORTO. Ejemplo: Si preguntan 'Sabes debatir?' responde solo 'Sí, dime el tema y empezamos.' No des tesis. Solo si dicen 'explícame a fondo' te extiendes."
+        system = f"Eres IA Maestra de J Carlos. Nivel {nivel}: {prompt_nivel(nivel)} Si hay imagen, transcríbela completa."
+        messages = [{"role":"system","content":system}] + [m for m in hist if isinstance(m, dict)]
 
-        msgs = [{"role":"system","content":sistema}]
-        for m in historial[-3:]:
-            if isinstance(m, dict): msgs.append(m)
-        msgs.append({"role":"user","content": mensaje})
+        modelo = VISION if img else TEXTO
 
-        resp = client.chat.completions.create(
-            model=MODELO_ACTIVO,
-            messages=msgs,
-            temperature=0.6,
-            max_tokens=200
-        )
-        return jsonify({"reply": limpiar(resp.choices[0].message.content)})
+        if img:
+            messages.append({"role":"user","content":[
+                {"type":"text","text": msg or f"Lee la imagen nivel {nivel}"},
+                {"type":"image_url","image_url":{"url": img}}
+            ]})
+        else:
+            messages.append({"role":"user","content": msg})
+
+        r = client.chat.completions.create(model=modelo, messages=messages, max_tokens=200, temperature=0.4)
+        txt = re.sub(r'\*\*','', r.choices[0].message.content)
+        return jsonify({"reply": txt})
+
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"reply": f"Error Groq: {str(e)[:200]}"}), 200
+        return jsonify({"reply": f"Error: {e}"}), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
