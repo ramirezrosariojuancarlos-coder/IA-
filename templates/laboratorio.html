@@ -1,48 +1,41 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="utf-8"><title>Laboratorio</title>
-<style>
-body{background:#0a0a1a;color:#0ff;font-family:monospace;padding:20px}
-input,select,button{padding:8px;margin:5px;background:#111;color:#0ff;border:1px solid #0ff}
-.card{border:1px solid #0ff;padding:15px;margin:10px 0}
-</style>
-</head>
+<head><title>Lab Postgres</title></head>
 <body>
-<h1>NEURONA - Laboratorio</h1>
-<p>SUMA + SESGO + CURVA - Como en el video de TikTok</p>
-
-<div class="card">
-<h3>1. Crear Neurona</h3>
-Nombre: <input id="nombre" value="Mi primera neurona"><br>
-Pesos (separados por coma): <input id="pesos" value="0.3,0.6,0.8,0.5,0.9" style="width:300px"><br>
-Sesgo: <input id="sesgo" type="number" value="0.5" step="0.1"><br>
-Curva: <select id="curva"><option value="sigmoid">Sigmoid (0 a 1)</option><option value="relu">ReLU</option><option value="tanh">Tanh</option></select><br>
-<button onclick="crear()">Guardar Neurona en Cerebro</button>
-</div>
-
-<div class="card">
-<h3>2. Probar Neurona (como en tu captura)</h3>
-Entradas: <input id="entradas" value="0.3,0.6,0.8,0.5,0.9" style="width:300px"><br>
-<button onclick="calcular()">Calcular SUMA + SESGO + CURVA</button>
-<p id="resultado" style="font-size:20px;color:#fff"></p>
-</div>
-
-<h3>Tu Cerebro Guardado:</h3>
-<pre id="cerebro">{{ cerebro | tojson(indent=2) }}</pre>
-<button onclick="borrar()">Borrar todo el cerebro</button>
-<br><br><a href="/" style="color:#fff">Volver a IA Maestra</a>
-
 <script>
-async function crear(){
- let res=await fetch('/api/neurona',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:document.getElementById('nombre').value,pesos:document.getElementById('pesos').value.split(',').map(Number),sesgo:parseFloat(document.getElementById('sesgo').value),curva:document.getElementById('curva').value})});
- let data=await res.json(); document.getElementById('cerebro').innerText=JSON.stringify(data.cerebro,null,2); alert('Neurona guardada!');
+let cerebro = {"neuronas":[]};
+
+// 1. Al entrar, carga de Postgres y de respaldo local
+async function cargar() {
+  try {
+    let r = await fetch('/api/cerebro');
+    cerebro = await r.json();
+    localStorage.setItem('mi_cerebro_backup', JSON.stringify(cerebro));
+  } catch(e) {
+    // Si falla Postgres, usa el respaldo local
+    let backup = localStorage.getItem('mi_cerebro_backup');
+    if(backup) cerebro = JSON.parse(backup);
+  }
+  render();
 }
-async function calcular(){
- let res=await fetch('/api/neurona/calcular',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entradas:document.getElementById('entradas').value.split(',').map(Number),pesos:document.getElementById('pesos').value.split(',').map(Number),sesgo:parseFloat(document.getElementById('sesgo').value),curva:document.getElementById('curva').value})});
- let d=await res.json(); document.getElementById('resultado').innerText=`SUMA = ${d.suma.toFixed(3)} -> con curva = ${d.salida.toFixed(3)} (como el 0,63 del video)`;
+
+// 2. Al guardar, guarda en los 2 lados
+async function guardar() {
+  localStorage.setItem('mi_cerebro_backup', JSON.stringify(cerebro));
+  await fetch('/api/cerebro', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(cerebro)
+  });
+  render();
 }
-async function borrar(){ await fetch('/api/cerebro/borrar',{method:'POST'}); location.reload(); }
+
+function render(){
+  document.getElementById('cerebro').innerText = JSON.stringify(cerebro, null, 2);
+}
+
+cargar();
 </script>
+<pre id="cerebro"></pre>
 </body>
-  </html>
+</html>
