@@ -1,37 +1,164 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IA Maestra</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEURONA - Laboratorio</title>
 <style>
-body{background:#0a0a1a;color:#fff;font-family:monospace;padding:20px;max-width:700px;margin:auto}
-#chat{border:1px solid #0ff;height:400px;overflow-y:auto;padding:10px;margin-bottom:10px}
-input{width:80%;padding:10px;background:#111;color:#0ff;border:1px solid #0ff}
-button{padding:10px;background:#0ff;color:#000;border:none}
-a{color:#0ff}
-.msg{margin:8px 0}
-.user{color:#ff0} .bot{color:#0ff}
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+  body {
+    margin:0; background:#02020a; color:#00f5ff;
+    font-family:'JetBrains Mono', monospace;
+    background-image: 
+      linear-gradient(rgba(0,245,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,255,0.05) 1px, transparent 1px);
+    background-size:30px 30px;
+  }
+  .header{padding:20px; border-bottom:1px solid #00f5ff33; display:flex; justify-content:space-between; align-items:center;}
+  .header h1{margin:0; font-size:20px; letter-spacing:3px; text-shadow:0 0 10px #00f5ff;}
+  .container{max-width:900px; margin:20px auto; padding:0 15px;}
+  .card{
+    background:rgba(10,15,30,0.8); backdrop-filter:blur(10px);
+    border:1px solid #00f5ff44; border-radius:12px; padding:20px; margin-bottom:20px;
+    box-shadow:0 0 20px rgba(0,245,255,0.1);
+  }
+  .card h2{font-size:14px; color:#fff; margin-top:0; letter-spacing:2px;}
+  label{font-size:12px; color:#889; display:block; margin-top:12px;}
+  input, select{
+    width:100%; background:#050a18; border:1px solid #00f5ff66; color:#00f5ff;
+    padding:10px; border-radius:6px; margin-top:5px; font-family:inherit; box-sizing:border-box;
+  }
+  input:focus{outline:none; box-shadow:0 0 10px #00f5ff88; border-color:#00f5ff;}
+  button{
+    margin-top:15px; background:transparent; border:1px solid #00f5ff; color:#00f5ff;
+    padding:10px 18px; border-radius:6px; cursor:pointer; font-family:inherit; letter-spacing:1px;
+    transition:0.2s;
+  }
+  button:hover{background:#00f5ff; color:#02020a; box-shadow:0 0 15px #00f5ff;}
+  button.danger{border-color:#ff0055; color:#ff0055;}
+  button.danger:hover{background:#ff0055; color:#fff; box-shadow:0 0 15px #ff0055;}
+  .result{margin-top:15px; background:#000; border-radius:6px; padding:12px; color:#fff; font-size:13px; border-left:3px solid #00f5ff;}
+  .brain-list{max-height:250px; overflow:auto;}
+  .neuron-item{background:#00066; border:1px solid #ffffff11; padding:10px; border-radius:6px; margin-top:8px; font-size:11px; color:#ccc;}
+  .tiktok-box{border:1px dashed #00f5ff66; border-radius:12px; padding:10px; text-align:center; color:#667;}
+  a{color:#666; font-size:11px; text-decoration:none; margin-top:15px; display:inline-block;}
+  a:hover{color:#00f5ff;}
 </style>
 </head>
 <body>
-<h1>IA Maestra</h1>
-<a href="/laboratorio">Ir a Laboratorio de Neuronas (crear cerebro)</a>
-<div id="chat"></div>
-<input id="msg" placeholder="Escribe...">
-<button onclick="enviar()">Enviar</button>
+  <div class="header">
+    <h1>NEURONA // LAB</h1>
+    <span style="font-size:10px; color:#445">SYSTEM ONLINE</span>
+  </div>
+
+<div class="container">
+  <div class="card">
+    <h2>01. VIDEO REFERENCIA</h2>
+    <div class="tiktok-box">
+      <!-- PEGA AQUÍ TU IFRAME DE TIKTOK O VIDEO -->
+      <!-- Ejemplo: <iframe src="..."></iframe> -->
+      <p>Tu video va aquí. Súbelo o pega el link de TikTok</p>
+      <video id="refVideo" controls style="width:100%; border-radius:8px; display:none;"></video>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>02. CREAR NEURONA</h2>
+    <label>Nombre:</label>
+    <input id="nombre" value="Mi primera neurona">
+    <label>Pesos (separados por coma):</label>
+    <input id="pesos" value="0.3,0.6,0.8,0.5,0.9">
+    <label>Sesgo:</label>
+    <input id="sesgo" type="number" step="0.1" value="0.5">
+    <label>Curva:</label>
+    <select id="curva">
+      <option value="sigmoid" selected>Sigmoid (0 a 1)</option>
+      <option value="tanh">Tanh (-1 a 1)</option>
+      <option value="relu">ReLU</option>
+      <option value="leaky">Leaky ReLU</option>
+    </select>
+    <button onclick="guardarNeurona()">Guardar Neurona en Cerebro</button>
+  </div>
+
+  <div class="card">
+    <h2>03. PROBAR NEURONA</h2>
+    <label>Entradas:</label>
+    <input id="entradas" value="0.3,0.6,0.8,0.5,0.9">
+    <button onclick="probar()">Calcular SUMA + SESGO + CURVA</button>
+    <div id="resultado" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="card">
+    <h2>04. TU CEREBRO GUARDADO [PERSISTENTE]</h2>
+    <div id="cerebro" class="brain-list"></div>
+    <button class="danger" onclick="borrarTodo()">Borrar todo el cerebro</button><br>
+    <a href="/">Volver a IA Maestra</a>
+  </div>
+</div>
+
 <script>
-async function enviar(){
- let m=document.getElementById('msg').value;
- if(!m)return;
- let chat=document.getElementById('chat');
- chat.innerHTML+=`<div class='msg user'>Tu: ${m}</div>`;
- document.getElementById('msg').value='';
- let res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m})});
- let data=await res.json();
- chat.innerHTML+=`<div class='msg bot'>IA: ${data.reply}</div>`;
- chat.scrollTop=chat.scrollHeight;
+let cerebro = JSON.parse(localStorage.getItem('mi_cerebro_v2')) || '{"neuronas":[]}';
+
+function guardarEnDisco(){
+  localStorage.setItem('mi_cerebro_v2', JSON.stringify(cerebro));
+  renderCerebro();
 }
+
+function guardarNeurona(){
+  const n = {
+    nombre: document.getElementById('nombre').value,
+    pesos: document.getElementById('pesos').value.split(',').map(x=>parseFloat(x.trim())),
+    sesgo: parseFloat(document.getElementById('sesgo').value),
+    curva: document.getElementById('curva').value,
+    id: Date.now()
+  };
+  cerebro.neuronas.push(n);
+  guardarEnDisco();
+  alert('Neurona guardada. Ya no se borrará.');
+}
+
+function aplicarCurva(x, curva){
+  if(curva==='sigmoid') return 1/(1+Math.exp(-x));
+  if(curva==='tanh') return Math.tanh(x);
+  if(curva==='relu') return Math.max(0,x);
+  if(curva==='leaky') return x>0?x:0.01*x;
+  return x;
+}
+
+function probar(){
+  const entradas = document.getElementById('entradas').value.split(',').map(x=>parseFloat(x.trim()));
+  const pesosStr = document.getElementById('pesos').value;
+  const pesos = pesosStr.split(',').map(x=>parseFloat(x.trim()));
+  const sesgo = parseFloat(document.getElementById('sesgo').value);
+  const curva = document.getElementById('curva').value;
+
+  if(entradas.length !== pesos.length){
+    alert(`Error: Tienes ${pesos.length} pesos pero ${entradas.length} entradas. Deben ser iguales.`);
+    return;
+  }
+  let suma = 0;
+  let detalle = "";
+  for(let i=0;i<pesos.length;i++){ suma += pesos[i]*entradas[i]; detalle += `(${pesos[i]}*${entradas[i]}) + `; }
+  let conSesgo = suma + sesgo;
+  let salida = aplicarCurva(conSesgo, curva);
+
+  const res = document.getElementById('resultado');
+  res.style.display='block';
+  res.innerHTML = `CALC: ${detalle.slice(0,-3)} = ${suma.toFixed(3)}<br>SUMA + SESGO = ${suma.toFixed(3)} + ${sesgo} = ${conSesgo.toFixed(3)}<br><b style="color:#00f5ff">> con curva ${curva} = ${salida.toFixed(3)} (${(salida*100).toFixed(1)}% activada)</b>`;
+}
+
+function renderCerebro(){
+  const div = document.getElementById('cerebro');
+  div.innerHTML = `<pre style="color:#445; font-size:10px; white-space:pre-wrap;">${JSON.stringify(cerebro, null, 2)}</pre>` + 
+    cerebro.neuronas.map(n=>`<div class="neuron-item"><b style="color:#fff">${n.nombre}</b><br>P: [${n.pesos.join(', ')}] | S: ${n.sesgo} | C: ${n.curva}</div>`).join('');
+}
+function borrarTodo(){
+  if(confirm('¿Seguro que quieres borrar TODO? Esto no se puede deshacer.')){
+    cerebro = {neuronas:[]};
+    guardarEnDisco();
+  }
+}
+renderCerebro();
 </script>
 </body>
 </html>
